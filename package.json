@@ -1,0 +1,13 @@
+{
+  "name": "beanz-coffee-app",
+  "version": "1.0.0",
+  "description": "Application Coffee Beanz - Style Costa",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx live-server --port=3000"
+  },
+  "keywords": ["coffee", "beanz", "app"],
+  "author": "Yasser",
+  "license": "MIT"
+}

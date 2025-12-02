@@ -1,0 +1,94 @@
+{
+  "user": {
+    "id": 1,
+    "name": "Yasser",
+    "points": 0,
+    "memberSince": "12/24",
+    "eurBalance": 0.00,
+    "freeCoffee": 0
+  },
+  "products": [
+    {
+      "id": 1,
+      "name": "Gingerbread Latte",
+      "description": "Notre latte festif préféré, délicieusement parfumé au sirop de pain d'épices, garni de crème et d'un bonhomme en pain d'épices.",
+      "prices": { "small": 4.50, "medium": 5.50, "large": 6.50 },
+      "image": "🎄",
+      "calories": { "small": 180, "medium": 240, "large": 320 },
+      "category": "hot"
+    },
+    {
+      "id": 2,
+      "name": "Cappuccino",
+      "description": "Un espresso intense surmonté d'une mousse de lait onctueuse et veloutée.",
+      "prices": { "small": 3.50, "medium": 4.50, "large": 5.50 },
+      "image": "☕",
+      "calories": { "small": 120, "medium": 160, "large": 200 },
+      "category": "hot"
+    },
+    {
+      "id": 3,
+      "name": "Latte",
+      "description": "Espresso doux mélangé à du lait chaud et crémeux.",
+      "prices": { "small": 3.80, "medium": 4.80, "large": 5.80 },
+      "image": "🥛",
+      "calories": { "small": 150, "medium": 200, "large": 260 },
+      "category": "hot"
+    },
+    {
+      "id": 4,
+      "name": "Mocha",
+      "description": "L'alliance parfaite du chocolat et du café, un délice gourmand.",
+      "prices": { "small": 4.20, "medium": 5.20, "large": 6.20 },
+      "image": "🍫",
+      "calories": { "small": 220, "medium": 290, "large": 380 },
+      "category": "hot"
+    },
+    {
+      "id": 5,
+      "name": "Americano",
+      "description": "Espresso allongé à l'eau chaude pour un café long et intense.",
+      "prices": { "small": 2.80, "medium": 3.50, "large": 4.20 },
+      "image": "☕",
+      "calories": { "small": 5, "medium": 10, "large": 15 },
+      "category": "hot"
+    },
+    {
+      "id": 6,
+      "name": "Flat White",
+      "description": "Double espresso avec du lait micro-moussé pour une texture veloutée.",
+      "prices": { "small": 3.90, "medium": 4.90, "large": 5.90 },
+      "image": "🤍",
+      "calories": { "small": 140, "medium": 180, "large": 230 },
+      "category": "hot"
+    }
+  ],
+  "events": [
+    {
+      "id": 1,
+      "title": "Apprenez le Latte Art",
+      "subtitle": "LATTE ART WORKSHOP AVEC BEANZ",
+      "date": "14 DÉCEMBRE | 15H-17H",
+      "description": "Inscrivez-vous pour un atelier créatif le 14 Déc.",
+      "type": "workshop"
+    },
+    {
+      "id": 2,
+      "title": "Cinéma en Plein Air",
+      "subtitle": "WINTER VIBES - FESTIVE CINEMA",
+      "date": "21 DÉCEMBRE | 19H",
+      "description": "Film de Noël avec chocolat chaud offert.",
+      "type": "event"
+    }
+  ],
+  "rewards": [
+    { "id": 1, "name": "Café gratuit", "points": 200 },
+    { "id": 2, "name": "Pâtisserie", "points": 150 },
+    { "id": 3, "name": "Surclassement", "points": 50 }
+  ],
+  "config": {
+    "pointsPerEur": 4,
+    "pointsForFreeCoffee": 200,
+    "maxPoints": 2000
+  }
+}

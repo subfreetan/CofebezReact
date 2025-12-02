@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>BEANZ Coffee</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      font-family: 'DM Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .app-container {
+      width: 100%;
+      max-width: 448px;
+      height: 100vh;
+      max-height: 896px;
+      background-color: #f3f4f6;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    @media (max-width: 448px) {
+      .app-container {
+        max-height: 100vh;
+        box-shadow: none;
+      }
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app-container"></div>
+
+  <script>
+    // ===== DONNÉES =====
+    const db = {
+      user: {
+        name: "Yasser",
+        points: 0,
+        memberSince: "12/24",
+        eurBalance: 0.00,
+        freeCoffee: 0
+      },
+      products: [
+        { id: 1, name: "Gingerbread Latte", description: "Notre latte festif préféré, délicieusement parfumé au sirop de pain d'épices, garni de crème et d'un bonhomme en pain d'épices.", prices: { small: 4.50, medium: 5.50, large: 6.50 }, image: "🎄", calories: { small: 180, medium: 240, large: 320 }},
+        { id: 2, name: "Cappuccino", description: "Un espresso intense surmonté d'une mousse de lait onctueuse et veloutée.", prices: { small: 3.50, medium: 4.50, large: 5.50 }, image: "☕", calories: { small: 120, medium: 160, large: 200 }},
+        { id: 3, name: "Latte", description: "Espresso doux mélangé à du lait chaud et crémeux.", prices: { small: 3.80, medium: 4.80, large: 5.80 }, image: "🥛", calories: { small: 150, medium: 200, large: 260 }},
+        { id: 4, name: "Mocha", description: "L'alliance parfaite du chocolat et du café, un délice gourmand.", prices: { small: 4.20, medium: 5.20, large: 6.20 }, image: "🍫", calories: { small: 220, medium: 290, large: 380 }},
+        { id: 5, name: "Americano", description: "Espresso allongé à l'eau chaude pour un café long et intense.", prices: { small: 2.80, medium: 3.50, large: 4.20 }, image: "☕", calories: { small: 5, medium: 10, large: 15 }},
+        { id: 6, name: "Flat White", description: "Double espresso avec du lait micro-moussé pour une texture veloutée.", prices: { small: 3.90, medium: 4.90, large: 5.90 }, image: "🤍", calories: { small: 140, medium: 180, large: 230 }}
+      ],
+      rewards: [
+        { name: "Café gratuit", points: 200 },
+        { name: "Pâtisserie", points: 150 },
+        { name: "Surclassement", points: 50 }
+      ]
+    };
+
+    // ===== STATE =====
+    let state = {
+      currentScreen: 'home',
+      selectedProduct: null,
+      quantity: 1,
+      selectedSize: 'medium',
+      selectedMilk: 'full',
+      cart: [],
+      headerOpacity: 0
+    };
+
+    // ===== COULEURS =====
+    const colors = {
+      primary: '#1a1a1a',
+      primaryLight: '#4b5563',
+      primaryDark: '#0a0a0a',
+      accent: '#e5e7eb'
+    };
+
+    // ===== HELPERS =====
+    function getGreeting() {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Bonjour';
+      if (hour < 18) return 'Bon après-midi';
+      return 'Bonsoir';
+    }
+
+    // ===== COMPOSANTS SVG =====
+    function createWavePattern(height = 300) {
+      const waveWidth = 50;
+      const amplitude = 12;
+      const strokeWidth = 18;
+      const numWaves = 12;
+      
+      let paths = '';
+      for (let i = 0; i < numWaves; i++) {
+        let d = '';
+        const steps = 50;
+        for (let j = 0; j <= steps; j++) {
+          const y = (j / steps) * height;
+          const x = (waveWidth * i + waveWidth / 2) + Math.sin((y / height) * Math.PI * 6) * amplitude;
+          d += (j === 0 ? 'M' : 'L') + ` ${x} ${y} `;
+        }
+        paths += `<path d="${d}" stroke="${colors.primaryLight}" stroke-width="${strokeWidth}" fill="none" stroke-linecap="round" opacity="0.6"/>`;
+      }
+      
+      return `
+        <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice" viewBox="0 0 ${waveWidth * numWaves} ${height}" style="background-color: ${colors.primary}">
+          ${paths}
+        </svg>
+      `;
+    }
+
+    function createBeanzCup(size = 60) {
+      const h = size * 1.4;
+      return `
+        <div style="width: ${size}px; height: ${h}px;">
+          <svg viewBox="0 0 60 84" style="width: 100%; height: 100%;">
+            <ellipse cx="30" cy="8" rx="24" ry="5" fill="#e5e7eb"/>
+            <path d="M6 8 Q6 4 30 4 Q54 4 54 8" fill="#d1d5db"/>
+            <rect x="8" y="6" width="44" height="6" rx="1" fill="#e5e7eb"/>
+            <ellipse cx="30" cy="6" rx="20" ry="3" fill="#d1d5db"/>
+            <path d="M10 14 L14 76 Q14 80 30 80 Q46 80 46 76 L50 14 Z" fill="${colors.primary}"/>
+            <path d="M10 14 L11 22 Q30 24 49 22 L50 14 Z" fill="${colors.primaryDark}"/>
+            <text x="28" y="50" text-anchor="middle" font-size="11" font-weight="bold" fill="white" font-family="'DM Sans', sans-serif" letter-spacing="1" transform="rotate(-90, 28, 50)">BEANZ</text>
+            <text x="40" y="50" text-anchor="middle" font-size="5" font-weight="400" fill="white" font-family="'DM Sans', sans-serif" letter-spacing="2" opacity="0.9" transform="rotate(-90, 40, 50)">COFFEE</text>
+          </svg>
+        </div>
+      `;
+    }
+
+    function createCoffeeBeans() {
+      return `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="${colors.primary}">
+          <ellipse cx="8" cy="12" rx="5" ry="7"/>
+          <path d="M8 6 Q6 12 8 18" stroke="white" stroke-width="1.5" fill="none"/>
+          <ellipse cx="16" cy="12" rx="5" ry="7"/>
+          <path d="M16 6 Q14 12 16 18" stroke="white" stroke-width="1.5" fill="none"/>
+        </svg>
+      `;
+    }
+
+    function createPalestineFlag() {
+      return `
+        <svg viewBox="0 0 64 40" class="w-full h-full">
+          <rect x="0" y="0" width="64" height="13.33" fill="#000000"/>
+          <rect x="0" y="13.33" width="64" height="13.33" fill="#FFFFFF"/>
+          <rect x="0" y="26.66" width="64" height="13.34" fill="#009639"/>
+          <polygon points="0,0 24,20 0,40" fill="#CE1126"/>
+        </svg>
+      `;
+    }
+
+    function createQRCode() {
+      return `
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+          <rect x="5" y="5" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="8" y="8" width="14" height="14" fill="white"/>
+          <rect x="11" y="11" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="75" y="5" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="78" y="8" width="14" height="14" fill="white"/>
+          <rect x="81" y="11" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="5" y="75" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="8" y="78" width="14" height="14" fill="white"/>
+          <rect x="11" y="81" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="30" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="34" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="58" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="50" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="42" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="66" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="42" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="66" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="86" width="4" height="4" fill="${colors.primary}"/>
+        </svg>
+      `;
+    }
+
+    // ===== ÉCRANS =====
+    function renderHomeScreen() {
+      return `
+        <div class="h-full relative">
+          <!-- Header FIXE -->
+          <div class="absolute top-0 left-0 right-0 h-48 overflow-hidden">
+            ${createWavePattern(300)}
+            <div class="absolute inset-0 bg-black transition-opacity duration-150" style="opacity: ${state.headerOpacity}"></div>
+            <div class="relative z-10 p-4 pt-6">
+              <div class="flex justify-between items-start">
+                <h1 class="text-xl font-light text-white">${getGreeting()} ${db.user.name}</h1>
+                <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Boutons rapides -->
+              <div class="flex gap-2 mt-4">
+                <button onclick="navigate('order')" class="flex-1 bg-white rounded-xl p-3 flex flex-col items-center shadow-lg">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5">
+                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                    <line x1="6" y1="1" x2="6" y2="4"/>
+                    <line x1="10" y1="1" x2="10" y2="4"/>
+                    <line x1="14" y1="1" x2="14" y2="4"/>
+                  </svg>
+                  <span class="text-xs font-medium mt-1" style="color: ${colors.primary}">Commander</span>
+                </button>
+                <button onclick="navigate('scan')" class="flex-1 bg-white rounded-xl p-3 flex flex-col items-center shadow-lg">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                  </svg>
+                  <span class="text-xs font-medium mt-1" style="color: ${colors.primary}">Scanner</span>
+                </button>
+                <button class="flex-1 bg-white rounded-xl p-3 flex flex-col items-center shadow-lg">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9,22 9,12 15,12 15,22"/>
+                  </svg>
+                  <span class="text-xs font-medium mt-1" style="color: ${colors.primary}">Boutiques</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contenu scrollable -->
+          <div id="homeScroll" class="h-full overflow-y-auto pb-16 hide-scrollbar">
+            <div class="h-44"></div>
+            <div class="bg-gray-100 relative z-20 rounded-t-3xl min-h-full">
+              
+              <!-- Carte fidélité -->
+              <div class="px-3 pt-4">
+                <div class="rounded-2xl p-4 shadow-lg" style="background-color: ${colors.accent}">
+                  <div class="flex items-center gap-3">
+                    ${createBeanzCup(45)}
+                    <div class="flex-1">
+                      <div class="flex items-center justify-center gap-2 mb-2">
+                        ${createCoffeeBeans()}
+                        <span class="text-xl font-bold" style="color: ${colors.primary}">${db.user.points} / 2000</span>
+                      </div>
+                      <div class="h-2 bg-white rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all" style="width: ${(db.user.points / 2000) * 100}%; background-color: ${colors.primary}"></div>
+                      </div>
+                      <div class="flex justify-between mt-1">
+                        <span class="text-xs" style="color: ${colors.primary}">Total: ${db.user.points}</span>
+                        <button class="text-xs font-medium flex items-center gap-1" style="color: ${colors.primary}">
+                          Voir l'historique <span>›</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event 1 -->
+              <div class="px-3 mt-4">
+                <div class="bg-white rounded-2xl overflow-hidden shadow-lg">
+                  <div class="h-40 relative overflow-hidden" style="background-color: ${colors.accent}">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                      <div class="text-6xl opacity-30">☕</div>
+                    </div>
+                    <div class="absolute inset-0 p-4 flex flex-col justify-between">
+                      <div>
+                        <p class="text-xs font-bold uppercase tracking-wider" style="color: ${colors.primary}">LATTE ART</p>
+                        <p class="text-xs font-bold uppercase tracking-wider" style="color: ${colors.primary}">WORKSHOP</p>
+                        <p class="text-lg font-bold mt-1" style="color: ${colors.primary}">AVEC <span style="font-weight: 800">BEANZ</span></p>
+                        <p class="text-xs mt-1" style="color: ${colors.primary}">14 DÉCEMBRE | 15H-17H</p>
+                      </div>
+                      <div class="flex justify-end">${createBeanzCup(50)}</div>
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <h3 class="text-lg font-bold" style="color: ${colors.primary}">Apprenez le Latte Art</h3>
+                    <p class="text-sm mt-1" style="color: ${colors.primaryLight}">Inscrivez-vous pour un atelier créatif le 14 Déc.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event 2 -->
+              <div class="px-3 mt-4 pb-6">
+                <div class="bg-white rounded-2xl overflow-hidden shadow-lg">
+                  <div class="h-32 relative overflow-hidden" style="background-color: ${colors.primary}">
+                    <div class="absolute inset-0 opacity-30">
+                      <svg class="w-full h-full" preserveAspectRatio="xMidYMid slice" viewBox="0 0 400 150">
+                        ${Array.from({length: 10}, (_, i) => `<path d="M${i * 45} 0 Q${i * 45 + 10} 37.5 ${i * 45} 75 Q${i * 45 - 10} 112.5 ${i * 45} 150" stroke="${colors.primaryLight}" stroke-width="12" fill="none"/>`).join('')}
+                      </svg>
+                    </div>
+                    <div class="absolute inset-0 p-4 flex items-center justify-between">
+                      <div>
+                        <p class="text-white text-xs font-bold uppercase tracking-wider">WINTER VIBES</p>
+                        <p class="text-white text-lg font-bold mt-1">FESTIVE CINEMA</p>
+                        <p class="text-white/80 text-xs mt-1">21 DÉCEMBRE | 19H</p>
+                      </div>
+                      <div class="text-4xl">🎬</div>
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <h3 class="text-lg font-bold" style="color: ${colors.primary}">Cinéma en Plein Air</h3>
+                    <p class="text-sm mt-1" style="color: ${colors.primaryLight}">Film de Noël avec chocolat chaud offert.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panier flottant -->
+          <div class="absolute bottom-20 right-4 z-30">
+            <button class="w-14 h-14 rounded-full flex items-center justify-center shadow-lg" style="background-color: ${colors.primary}">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </button>
+            ${state.cart.length > 0 ? `
+              <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style="background-color: ${colors.primary}; border: 2px solid white; color: white;">
+                ${state.cart.length}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderOrderScreen() {
+      return `
+        <div class="h-full overflow-y-auto pb-16 hide-scrollbar">
+          <div class="bg-white p-3 shadow-sm sticky top-0 z-30">
+            <div class="flex items-center gap-3">
+              <button onclick="navigate('home')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <h1 class="text-lg font-bold" style="color: ${colors.primary}">Commander</h1>
+            </div>
+          </div>
+
+          <div class="p-3">
+            <div class="flex gap-2 overflow-x-auto pb-2">
+              ${['Boissons chaudes', 'Froides', 'Pâtisseries'].map((cat, i) => `
+                <button class="px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-medium" style="background-color: ${i === 0 ? colors.primary : 'white'}; color: ${i === 0 ? 'white' : colors.primary}; border: ${i === 0 ? 'none' : '1px solid ' + colors.primaryLight}">
+                  ${cat}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="px-3">
+            <div class="grid grid-cols-2 gap-3">
+              ${db.products.map(product => `
+                <button onclick="selectProduct(${product.id})" class="bg-white rounded-xl p-3 shadow text-left">
+                  <div class="text-3xl text-center mb-2">${product.image}</div>
+                  <h3 class="font-medium text-xs" style="color: ${colors.primary}">${product.name}</h3>
+                  <p class="text-xs text-gray-500 mt-1 line-clamp-2">${product.description}</p>
+                  <p class="text-xs font-bold mt-2" style="color: ${colors.primary}">${product.prices.small.toFixed(2)}€</p>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProductScreen() {
+      if (!state.selectedProduct) return '';
+      const p = state.selectedProduct;
+      const currentPrice = p.prices[state.selectedSize] * state.quantity;
+      const currentCalories = p.calories[state.selectedSize];
+
+      return `
+        <div class="h-full overflow-y-auto bg-white pb-24 hide-scrollbar">
+          <div class="p-3 flex justify-end">
+            <button onclick="navigate('order')" class="w-8 h-8 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="text-center py-4">
+            <div class="text-7xl">${p.image}</div>
+          </div>
+
+          <div class="px-4">
+            <div class="flex justify-between items-start">
+              <h1 class="text-xl font-bold" style="color: ${colors.primary}">${p.name}</h1>
+              <button>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
+            <p class="text-gray-600 mt-2 text-xs leading-relaxed">${p.description}</p>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Quantité -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Quantité</h3>
+            <div class="flex items-center justify-center gap-4">
+              <button onclick="updateQuantity(-1)" class="w-10 h-10 rounded-full flex items-center justify-center text-xl" style="border: 2px solid ${colors.primary}; color: ${colors.primary}">−</button>
+              <span class="text-xl font-bold w-6 text-center" style="color: ${colors.primary}">${state.quantity}</span>
+              <button onclick="updateQuantity(1)" class="w-10 h-10 rounded-full flex items-center justify-center text-xl" style="border: 2px solid ${colors.primary}; color: ${colors.primary}">+</button>
+            </div>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Taille -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Taille</h3>
+            <div class="flex justify-center gap-2">
+              ${['small', 'medium', 'large'].map(size => `
+                <button onclick="updateSize('${size}')" class="flex flex-col items-center p-3 rounded-xl transition-all" style="min-width: 70px; background-color: ${state.selectedSize === size ? colors.accent : 'white'}; border: ${state.selectedSize === size ? '2px solid ' + colors.primaryLight : '2px solid transparent'}">
+                  <svg viewBox="0 0 40 60" class="w-8 h-12">
+                    <path d="M8 ${60 - (size === 'small' ? 35 : size === 'medium' ? 45 : 55)} L12 55 C12 57 15 58 20 58 C25 58 28 57 28 55 L32 ${60 - (size === 'small' ? 35 : size === 'medium' ? 45 : 55)} Z" fill="none" stroke="${state.selectedSize === size ? colors.primary : '#9ca3af'}" stroke-width="2"/>
+                  </svg>
+                  <span class="text-xs font-medium mt-1" style="color: ${state.selectedSize === size ? colors.primary : '#9ca3af'}">${size === 'small' ? 'Petit' : size === 'medium' ? 'Moyen' : 'Grand'}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Lait -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Lait & Alternatives</h3>
+            <div class="flex justify-center gap-2">
+              ${[
+                { id: 'full', name: 'Lait Entier', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2h8l2 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6l2-4z"/><path d="M6 6h12"/></svg>' },
+                { id: 'soya', name: 'Soja', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="12" rx="8" ry="10"/><ellipse cx="12" cy="12" rx="4" ry="5"/></svg>' },
+                { id: 'almond', name: 'Amande', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8 2 4 8 4 14s4 8 8 8 8-2 8-8-4-12-8-12z"/><path d="M12 6v12"/></svg>' }
+              ].map(milk => `
+                <button onclick="updateMilk('${milk.id}')" class="flex flex-col items-center p-3 rounded-xl transition-all" style="min-width: 70px; background-color: ${state.selectedMilk === milk.id ? colors.accent : 'white'}; border: ${state.selectedMilk === milk.id ? '2px solid ' + colors.primaryLight : '2px solid transparent'}; color: ${state.selectedMilk === milk.id ? colors.primary : '#9ca3af'}">
+                  ${milk.icon}
+                  <span class="text-xs font-medium mt-1 text-center">${milk.name}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="px-4 mt-4">
+            <p class="text-xs text-gray-400 text-center">Les informations caloriques n'incluent pas les suppléments.</p>
+          </div>
+
+          <!-- Barre d'ajout -->
+          <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-3 flex items-center justify-between" style="max-width: 448px; margin: 0 auto;">
+            <div>
+              <p class="text-xl font-bold" style="color: ${colors.primary}">${currentPrice.toFixed(2)}€</p>
+              <p class="text-xs text-gray-500">${currentCalories} kcal</p>
+            </div>
+            <button onclick="addToCart()" class="px-6 py-3 rounded-full font-bold text-white text-sm" style="background-color: ${colors.primary}">Ajouter</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderScanScreen() {
+      return `
+        <div class="h-full overflow-y-auto pb-16 hide-scrollbar" style="background-color: ${colors.primary}">
+          <div class="p-4 flex justify-between items-center">
+            <h1 class="text-lg font-bold text-white">BEANZ WALLET</h1>
+            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Carte membre -->
+          <div class="px-4">
+            <div class="rounded-2xl overflow-hidden shadow-lg relative" style="height: 180px;">
+              <div class="absolute inset-0 bg-gradient-to-br from-gray-400 to-gray-600">
+                <div class="absolute inset-0 opacity-20">
+                  <div class="absolute top-4 right-4 text-6xl">☕</div>
+                  <div class="absolute bottom-8 right-12 text-4xl">☕</div>
+                </div>
+              </div>
+              <div class="absolute inset-0 bg-gray-500/30"></div>
+              
+              <div class="absolute top-3 left-3 w-16 h-10 rounded overflow-hidden shadow-md">
+                ${createPalestineFlag()}
+              </div>
+
+              <div class="absolute top-3 right-3 bg-white/90 rounded-lg px-2 py-1">
+                <span class="text-xs font-bold" style="color: ${colors.primary}">BEANZ</span>
+                <span class="text-[8px] block text-center" style="color: ${colors.primary}">CLUB</span>
+              </div>
+
+              <div class="absolute bottom-0 left-0 right-0 p-4">
+                <p class="text-white text-xs font-medium opacity-80">FREE PALESTINE</p>
+                <p class="text-white text-lg font-bold">${db.user.name}</p>
+                <div class="flex justify-between items-end mt-1">
+                  <p class="text-white/80 text-xs">Membre depuis</p>
+                  <p class="text-white font-bold text-sm">${db.user.memberSince}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Balance -->
+          <div class="px-4 mt-4">
+            <div class="bg-gray-100 rounded-2xl p-4 flex justify-around items-center">
+              <div class="flex flex-col items-center">
+                ${createCoffeeBeans()}
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.points}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">Beanz Balance</span>
+              </div>
+              <div class="flex flex-col items-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                  <rect x="2" y="6" width="20" height="12" rx="2"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.eurBalance.toFixed(2)}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">EUR</span>
+              </div>
+              <div class="flex flex-col items-center">
+                ${createBeanzCup(28)}
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.freeCoffee}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">Free Coffee</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- QR Code -->
+          <div class="px-4 mt-4">
+            <div class="bg-white rounded-2xl p-6 flex flex-col items-center">
+              <div class="w-48 h-48 bg-white p-2 rounded-lg">
+                ${createQRCode()}
+              </div>
+              <p class="text-xs text-center mt-4" style="color: ${colors.primaryLight}">1 EUR = 4 Beanz</p>
+              <p class="text-xs text-center" style="color: ${colors.primaryLight}">200 Beanz = 1 Free Coffee</p>
+            </div>
+          </div>
+
+          <!-- Bouton Recharger -->
+          <div class="px-4 mt-4">
+            <button class="w-full py-3 rounded-full font-bold text-sm" style="background-color: ${colors.accent}; color: ${colors.primary}">Recharger</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGiftScreen() {
+      return `
+        <div class="h-full overflow-y-auto pb-16 hide-scrollbar">
+          <div class="bg-white p-3 shadow-sm">
+            <h1 class="text-lg font-bold text-center" style="color: ${colors.primary}">Cadeaux</h1>
+          </div>
+          <div class="p-4">
+            <div class="bg-white rounded-xl p-5 shadow text-center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5" class="mx-auto mb-3">
+                <polyline points="20,12 20,22 4,22 4,12"/>
+                <rect x="2" y="7" width="20" height="5"/>
+                <line x1="12" y1="22" x2="12" y2="7"/>
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+              </svg>
+              <h2 class="text-base font-bold mb-2" style="color: ${colors.primary}">Offrez un café</h2>
+              <p class="text-xs mb-4" style="color: ${colors.primaryLight}">Envoyez une carte cadeau</p>
+              <button class="w-full py-3 rounded-full font-bold text-white text-sm" style="background-color: ${colors.primary}">Envoyer</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTreatsScreen() {
+      return `
+        <div class="h-full overflow-y-auto pb-16 hide-scrollbar">
+          <div class="bg-white p-3 shadow-sm">
+            <h1 class="text-lg font-bold text-center" style="color: ${colors.primary}">Récompenses</h1>
+          </div>
+          <div class="p-4">
+            <div class="rounded-2xl p-4 mb-4" style="background-color: ${colors.accent}">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-bold" style="color: ${colors.primary}">Vos points</span>
+                <span class="text-xl font-bold" style="color: ${colors.primary}">${db.user.points}</span>
+              </div>
+              <div class="h-2 bg-white rounded-full overflow-hidden">
+                <div class="h-full rounded-full" style="width: ${(db.user.points / 200) * 100}%; background-color: ${colors.primary}"></div>
+              </div>
+              <p class="text-xs mt-2" style="color: ${colors.primary}">Plus que ${200 - db.user.points} points !</p>
+            </div>
+
+            <h2 class="text-sm font-bold mb-3" style="color: ${colors.primary}">Disponibles</h2>
+            
+            ${db.rewards.map(reward => `
+              <div class="bg-white rounded-xl p-3 shadow mb-2 flex items-center justify-between">
+                <div>
+                  <p class="font-medium text-sm" style="color: ${colors.primary}">${reward.name}</p>
+                  <p class="text-xs text-gray-500">${reward.points} pts</p>
+                </div>
+                <button class="px-3 py-1.5 rounded-full text-xs font-medium" style="background-color: ${db.user.points >= reward.points ? colors.primary : colors.accent}; color: ${db.user.points >= reward.points ? 'white' : colors.primaryLight}" ${db.user.points < reward.points ? 'disabled' : ''}>
+                  Échanger
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBottomNav() {
+      const items = [
+        { id: 'home', label: 'Accueil', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>' },
+        { id: 'order', label: 'Commander', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>' },
+        { id: 'scan', label: 'Scanner', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>' },
+        { id: 'gift', label: 'Cadeaux', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,12 20,22 4,22 4,12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' },
+        { id: 'treats', label: 'Récompenses', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>' }
+      ];
+
+      return `
+        <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center h-14">
+          ${items.map(item => `
+            <button onclick="navigate('${item.id}')" class="flex flex-col items-center justify-center h-full px-2" style="color: ${state.currentScreen === item.id ? colors.primary : '#9ca3af'}">
+              ${item.icon}
+              <span class="text-[10px] mt-0.5" style="font-weight: ${state.currentScreen === item.id ? 500 : 400}">${item.label}</span>
+            </button>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // ===== ACTIONS =====
+    function navigate(screen) {
+      state.currentScreen = screen;
+      state.headerOpacity = 0;
+      render();
+    }
+
+    function selectProduct(id) {
+      state.selectedProduct = db.products.find(p => p.id === id);
+      state.quantity = 1;
+      state.selectedSize = 'medium';
+      state.selectedMilk = 'full';
+      state.currentScreen = 'product';
+      render();
+    }
+
+    function updateQuantity(delta) {
+      state.quantity = Math.max(1, state.quantity + delta);
+      render();
+    }
+
+    function updateSize(size) {
+      state.selectedSize = size;
+      render();
+    }
+
+    function updateMilk(milk) {
+      state.selectedMilk = milk;
+      render();
+    }
+
+    function addToCart() {
+      if (state.selectedProduct) {
+        state.cart.push({
+          ...state.selectedProduct,
+          quantity: state.quantity,
+          size: state.selectedSize,
+          milk: state.selectedMilk,
+          price: state.selectedProduct.prices[state.selectedSize] * state.quantity
+        });
+        state.currentScreen = 'home';
+        state.quantity = 1;
+        state.selectedSize = 'medium';
+        state.selectedMilk = 'full';
+        render();
+      }
+    }
+
+    // ===== RENDER =====
+    function render() {
+      let content = '';
+      
+      switch (state.currentScreen) {
+        case 'home':
+          content = renderHomeScreen();
+          break;
+        case 'order':
+          content = renderOrderScreen();
+          break;
+        case 'product':
+          content = renderProductScreen();
+          break;
+        case 'scan':
+          content = renderScanScreen();
+          break;
+        case 'gift':
+          content = renderGiftScreen();
+          break;
+        case 'treats':
+          content = renderTreatsScreen();
+          break;
+      }
+
+      const showNav = state.currentScreen !== 'product';
+      
+      document.getElementById('app').innerHTML = `
+        ${content}
+        ${showNav ? renderBottomNav() : ''}
+      `;
+
+      // Ajouter le listener de scroll pour l'effet d'opacité
+      if (state.currentScreen === 'home') {
+        const scrollEl = document.getElementById('homeScroll');
+        if (scrollEl) {
+          scrollEl.addEventListener('scroll', function(e) {
+            const scrollTop = e.target.scrollTop;
+            state.headerOpacity = Math.min(scrollTop / 100, 0.7);
+            const overlay = document.querySelector('.bg-black.transition-opacity');
+            if (overlay) {
+              overlay.style.opacity = state.headerOpacity;
+            }
+          });
+        }
+      }
+    }
+
+    // ===== INIT =====
+    render();
+  </script>
+</body>
+</html>
