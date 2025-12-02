@@ -2,9 +2,10 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a1a">
   <title>BEANZ Coffee</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,32 +13,68 @@
     * {
       font-family: 'DM Sans', sans-serif;
       -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
     }
-    body {
+    
+    html, body {
       margin: 0;
       padding: 0;
-      background-color: #f3f4f6;
+      background-color: #1a1a1a;
+      min-height: 100vh;
+      min-height: 100dvh; /* Dynamic viewport height - s'adapte à la barre Safari/Chrome */
+      overflow: hidden;
+    }
+    
+    body {
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      /* Safe area pour les encoches et barres de navigation */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
+    
     .app-container {
       width: 100%;
       max-width: 448px;
       height: 100vh;
+      height: 100dvh; /* Dynamic viewport height */
       max-height: 896px;
       background-color: #f3f4f6;
       position: relative;
       overflow: hidden;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
+    
     @media (max-width: 448px) {
       .app-container {
-        max-height: 100vh;
+        max-height: 100dvh;
         box-shadow: none;
       }
     }
+    
+    /* Barre de navigation fixe en bas avec safe area */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      height: calc(3.5rem + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    /* Padding pour le contenu scrollable */
+    .scroll-content {
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    }
+    
     .hide-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -272,7 +309,7 @@
           </div>
 
           <!-- Contenu scrollable -->
-          <div id="homeScroll" class="h-full overflow-y-auto pb-16 hide-scrollbar">
+          <div id="homeScroll" class="h-full overflow-y-auto scroll-content hide-scrollbar">
             <div class="h-44"></div>
             <div class="bg-gray-100 relative z-20 rounded-t-3xl min-h-full">
               
@@ -372,7 +409,7 @@
 
     function renderOrderScreen() {
       return `
-        <div class="h-full overflow-y-auto pb-16 hide-scrollbar">
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar">
           <div class="bg-white p-3 shadow-sm sticky top-0 z-30">
             <div class="flex items-center gap-3">
               <button onclick="navigate('home')">
@@ -524,7 +561,7 @@
 
     function renderScanScreen() {
       return `
-        <div class="h-full overflow-y-auto pb-16 hide-scrollbar" style="background-color: ${colors.primary}">
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar" style="background-color: ${colors.primary}">
           <div class="p-4 flex justify-between items-center">
             <h1 class="text-lg font-bold text-white">BEANZ WALLET</h1>
             <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
@@ -611,7 +648,7 @@
 
     function renderGiftScreen() {
       return `
-        <div class="h-full overflow-y-auto pb-16 hide-scrollbar">
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar">
           <div class="bg-white p-3 shadow-sm">
             <h1 class="text-lg font-bold text-center" style="color: ${colors.primary}">Cadeaux</h1>
           </div>
@@ -635,7 +672,7 @@
 
     function renderTreatsScreen() {
       return `
-        <div class="h-full overflow-y-auto pb-16 hide-scrollbar">
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar">
           <div class="bg-white p-3 shadow-sm">
             <h1 class="text-lg font-bold text-center" style="color: ${colors.primary}">Récompenses</h1>
           </div>
@@ -679,7 +716,7 @@
       ];
 
       return `
-        <div class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center h-14">
+        <div class="bottom-nav">
           ${items.map(item => `
             <button onclick="navigate('${item.id}')" class="flex flex-col items-center justify-center h-full px-2" style="color: ${state.currentScreen === item.id ? colors.primary : '#9ca3af'}">
               ${item.icon}
