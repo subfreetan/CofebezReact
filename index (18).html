@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a1a">
+  <title>BEANZ Coffee</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      font-family: 'DM Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #1a1a1a;
+      min-height: 100vh;
+      min-height: 100dvh; /* Dynamic viewport height - s'adapte à la barre Safari/Chrome */
+      overflow: hidden;
+    }
+    
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      /* Safe area pour les encoches et barres de navigation */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    
+    .app-container {
+      width: 100%;
+      max-width: 448px;
+      height: 100vh;
+      height: 100dvh; /* Dynamic viewport height */
+      max-height: 896px;
+      background-color: #f3f4f6;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    @media (max-width: 448px) {
+      .app-container {
+        max-height: 100dvh;
+        box-shadow: none;
+      }
+    }
+    
+    /* Barre de navigation fixe en bas avec safe area */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      align-items: flex-end;
+      height: calc(3.5rem + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 50;
+      overflow: visible;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+    .nav-item-label {
+      font-size: 10px;
+      margin-top: 2px;
+    }
+    .nav-item-order {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 68px;
+      height: 72px;
+      border-radius: 14px 14px 0 0;
+      color: white;
+      align-self: flex-end;
+      cursor: pointer;
+      padding: 0;
+    }
+    
+    /* Padding pour le contenu scrollable */
+    .scroll-content {
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    }
+    
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app-container"></div>
+
+  <script>
+    // ===== DONNÉES =====
+    const db = {
+      user: {
+        name: "Yasser",
+        points: 0,
+        memberSince: "12/24",
+        eurBalance: 0.00,
+        freeCoffee: 0
+      },
+      products: [
+        // === FOOD ===
+        // Panini
+        { id: 101, name: "Mamma Mia", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 320, medium: 400, large: 480 }, description: "Panini généreux aux saveurs italiennes." },
+        { id: 102, name: "Ham & Cheese", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 300, medium: 380, large: 450 }, description: "Panini classique jambon fromage." },
+        { id: 103, name: "Thon", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 290, medium: 370, large: 440 }, description: "Panini au thon fondant." },
+        { id: 104, name: "French Cheese", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 340, medium: 420, large: 500 }, description: "Panini aux fromages français." },
+        { id: 105, name: "Chicken", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 310, medium: 390, large: 460 }, description: "Panini au poulet grillé." },
+        { id: 106, name: "Salmon", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 6.00, medium: 7.00, large: 8.00 }, calories: { small: 280, medium: 360, large: 430 }, description: "Panini au saumon fumé." },
+        // Bagel
+        { id: 107, name: "Healthy Cheese", category: "food", subcategory: "Bagel", image: "🥯", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 280, medium: 350, large: 420 }, description: "Bagel fromage healthy." },
+        { id: 108, name: "Ham & Cheese", category: "food", subcategory: "Bagel", image: "🥯", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 300, medium: 380, large: 450 }, description: "Bagel jambon fromage." },
+        { id: 109, name: "Salmon & Cream", category: "food", subcategory: "Bagel", image: "🥯", prices: { small: 6.00, medium: 7.00, large: 8.00 }, calories: { small: 290, medium: 370, large: 440 }, description: "Bagel saumon cream cheese." },
+        // Wrap
+        { id: 110, name: "Chicken", category: "food", subcategory: "Wrap", image: "🌯", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 310, medium: 390, large: 460 }, description: "Wrap au poulet croustillant." },
+        // Sandwichs
+        { id: 111, name: "Healthy Cheese", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 260, medium: 330, large: 400 }, description: "Sandwich fromage healthy." },
+        { id: 112, name: "Mamma Mia", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 300, medium: 380, large: 450 }, description: "Sandwich italien généreux." },
+        { id: 113, name: "Ham & Cheese", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 290, medium: 370, large: 440 }, description: "Sandwich jambon fromage." },
+        { id: 114, name: "Thon", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 280, medium: 360, large: 430 }, description: "Sandwich au thon." },
+        { id: 115, name: "Frenchy", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 310, medium: 390, large: 460 }, description: "Sandwich à la française." },
+        { id: 116, name: "Fish & Cream", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 270, medium: 350, large: 420 }, description: "Sandwich poisson cream cheese." },
+        // Toast
+        { id: 117, name: "Healthy Cheese", category: "food", subcategory: "Toast", image: "🍞", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 240, medium: 310, large: 380 }, description: "Toast fromage healthy." },
+        { id: 118, name: "Ham & Cheese", category: "food", subcategory: "Toast", image: "🍞", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 270, medium: 340, large: 410 }, description: "Toast jambon fromage." },
+        { id: 119, name: "Salmon & Cream", category: "food", subcategory: "Toast", image: "🍞", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 260, medium: 330, large: 400 }, description: "Toast saumon cream cheese." },
+
+        // === BOISSONS FROIDES ===
+        // Jus & Smoothie
+        { id: 201, name: "Orange", category: "cold", subcategory: "Jus & Smoothie", image: "🍊", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 110, medium: 150, large: 200 }, description: "Jus d'orange frais pressé." },
+        { id: 202, name: "Ananas", category: "cold", subcategory: "Jus & Smoothie", image: "🍍", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 120, medium: 160, large: 210 }, description: "Jus d'ananas tropical." },
+        { id: 203, name: "Mangue", category: "cold", subcategory: "Jus & Smoothie", image: "🥭", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 130, medium: 170, large: 220 }, description: "Jus de mangue onctueux." },
+        { id: 204, name: "Fraise", category: "cold", subcategory: "Jus & Smoothie", image: "🍓", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 100, medium: 140, large: 190 }, description: "Jus de fraise frais." },
+        { id: 205, name: "Fruits des bois", category: "cold", subcategory: "Jus & Smoothie", image: "🫐", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 120, medium: 160, large: 210 }, description: "Mix de fruits des bois." },
+        { id: 206, name: "Mangue Banane", category: "cold", subcategory: "Jus & Smoothie", image: "🥤", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 160, medium: 210, large: 270 }, description: "Smoothie mangue banane." },
+        { id: 207, name: "Fraise Ananas", category: "cold", subcategory: "Jus & Smoothie", image: "🥤", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 150, medium: 200, large: 260 }, description: "Smoothie fraise ananas." },
+        { id: 208, name: "Mangue Menthe", category: "cold", subcategory: "Jus & Smoothie", image: "🥤", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 140, medium: 190, large: 250 }, description: "Smoothie mangue menthe fraîche." },
+        { id: 209, name: "Mangue Fraise Banane", category: "cold", subcategory: "Jus & Smoothie", image: "🥤", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 180, medium: 230, large: 290 }, description: "Smoothie trio de fruits." },
+        // Mojitos
+        { id: 210, name: "Citron", category: "cold", subcategory: "Mojitos", image: "🍋", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 90, medium: 120, large: 160 }, description: "Mojito citron classique sans alcool." },
+        { id: 211, name: "Fraise", category: "cold", subcategory: "Mojitos", image: "🍓", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 100, medium: 130, large: 170 }, description: "Mojito fraise sans alcool." },
+        { id: 212, name: "Violette", category: "cold", subcategory: "Mojitos", image: "💜", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 95, medium: 125, large: 165 }, description: "Mojito violette sans alcool." },
+        // Iced Tea
+        { id: 213, name: "Lemon", category: "cold", subcategory: "Iced Tea", image: "🍋", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 80, medium: 110, large: 150 }, description: "Thé glacé au citron." },
+        { id: 214, name: "Spicy Peach", category: "cold", subcategory: "Iced Tea", image: "🍑", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 85, medium: 115, large: 155 }, description: "Thé glacé pêche épicé." },
+        { id: 215, name: "Coco-Mango", category: "cold", subcategory: "Iced Tea", image: "🥥", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 90, medium: 120, large: 160 }, description: "Thé glacé coco mangue." },
+        // Milkshake
+        { id: 216, name: "Bueno", category: "cold", subcategory: "Milkshake", image: "images/milk_bueno.jpg", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 320, medium: 420, large: 520 }, description: "Milkshake Kinder Bueno." },
+        { id: 217, name: "M&M'S", category: "cold", subcategory: "Milkshake", image: "images/milk_mms.jpg", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 340, medium: 440, large: 540 }, description: "Milkshake M&M's." },
+        { id: 218, name: "Oreo", category: "cold", subcategory: "Milkshake", image: "images/milk_oreo.jpg", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 330, medium: 430, large: 530 }, description: "Milkshake Oreo." },
+        { id: 219, name: "Ferrero Rocher", category: "cold", subcategory: "Milkshake", image: "images/milk_ferrero.jpg", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 350, medium: 450, large: 550 }, description: "Milkshake Ferrero Rocher." },
+        { id: 220, name: "Cookies", category: "cold", subcategory: "Milkshake", image: "images/milk_cookies.jpg", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 310, medium: 410, large: 510 }, description: "Milkshake cookies." },
+        { id: 221, name: "Brownies", category: "cold", subcategory: "Milkshake", image: "images/milk_brownies.jpg", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 340, medium: 440, large: 540 }, description: "Milkshake brownies." },
+        { id: 222, name: "Snickers", category: "cold", subcategory: "Milkshake", image: "images/milk_snickers.jpg", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 350, medium: 450, large: 550 }, description: "Milkshake Snickers." },
+        { id: 223, name: "Speculoos", category: "cold", subcategory: "Milkshake", image: "images/milk_speculoos.jpg", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 300, medium: 400, large: 500 }, description: "Milkshake spéculoos." },
+        { id: 224, name: "Caramel", category: "cold", subcategory: "Milkshake", image: "images/milk_caramel.jpg", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 290, medium: 390, large: 490 }, description: "Milkshake caramel." },
+        { id: 225, name: "Café", category: "cold", subcategory: "Milkshake", image: "images/milk_cafe.jpg", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 270, medium: 370, large: 470 }, description: "Milkshake café." },
+        { id: 226, name: "Vanille", category: "cold", subcategory: "Milkshake", image: "images/milk_vanille.jpg", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 260, medium: 360, large: 460 }, description: "Milkshake vanille." },
+        { id: 227, name: "Fraise", category: "cold", subcategory: "Milkshake", image: "images/milk_fraise.jpg", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 250, medium: 350, large: 450 }, description: "Milkshake fraise." },
+        { id: 228, name: "Banane", category: "cold", subcategory: "Milkshake", image: "images/milk_banane.jpg", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 260, medium: 360, large: 460 }, description: "Milkshake banane." },
+        { id: 229, name: "Royal", category: "cold", subcategory: "Milkshake", image: "images/milk_royal.jpg", prices: { small: 6.00, medium: 7.00, large: 8.00 }, calories: { small: 380, medium: 480, large: 580 }, description: "Milkshake Royal premium." },
+        { id: 230, name: "Sahari", category: "cold", subcategory: "Milkshake", image: "images/milk_sahari.jpg", prices: { small: 6.00, medium: 7.00, large: 8.00 }, calories: { small: 360, medium: 460, large: 560 }, description: "Milkshake Sahari exotique." },
+
+        // === BOISSONS CHAUDES ===
+        // Cafés
+        { id: 301, name: "Expresso", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 2.20, medium: 2.80, large: 3.40 }, calories: { small: 5, medium: 5, large: 10 }, description: "Expresso court et intense." },
+        { id: 302, name: "Black Coffee", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 2.50, medium: 3.20, large: 3.80 }, calories: { small: 5, medium: 5, large: 10 }, description: "Café noir allongé." },
+        { id: 303, name: "Americano", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 2.80, medium: 3.50, large: 4.20 }, calories: { small: 5, medium: 10, large: 15 }, description: "Espresso allongé à l'eau chaude." },
+        { id: 304, name: "Cortado", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 3.00, medium: 3.70, large: 4.40 }, calories: { small: 40, medium: 60, large: 80 }, description: "Espresso coupé d'un nuage de lait." },
+        { id: 305, name: "Flat White", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 3.90, medium: 4.90, large: 5.90 }, calories: { small: 140, medium: 180, large: 230 }, description: "Double espresso, lait micro-moussé." },
+        { id: 306, name: "Cappuccino", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 120, medium: 160, large: 200 }, description: "Espresso surmonté de mousse de lait." },
+        { id: 307, name: "Cafe Latte", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 3.80, medium: 4.80, large: 5.80 }, calories: { small: 150, medium: 200, large: 260 }, description: "Espresso et lait chaud crémeux." },
+        { id: 308, name: "Chocolat Chaud", category: "hot", subcategory: "Cafés", image: "🍫", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 200, medium: 270, large: 350 }, description: "Chocolat chaud onctueux." },
+        { id: 309, name: "Café Mocha", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 4.20, medium: 5.20, large: 6.20 }, calories: { small: 220, medium: 290, large: 380 }, description: "Alliance café et chocolat." },
+        { id: 310, name: "Café Mocha Blanc", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 4.20, medium: 5.20, large: 6.20 }, calories: { small: 230, medium: 300, large: 390 }, description: "Mocha au chocolat blanc." },
+        // Thés
+        { id: 311, name: "English Tea", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 2.50, medium: 3.20, large: 3.80 }, calories: { small: 2, medium: 2, large: 5 }, description: "Thé anglais classique." },
+        { id: 312, name: "Menthe", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 2.50, medium: 3.20, large: 3.80 }, calories: { small: 2, medium: 2, large: 5 }, description: "Thé à la menthe fraîche." },
+        { id: 313, name: "Menthe Gingembre", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 3.00, medium: 3.70, large: 4.40 }, calories: { small: 5, medium: 5, large: 10 }, description: "Thé menthe et gingembre." },
+        { id: 314, name: "Menthe Citron", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 3.00, medium: 3.70, large: 4.40 }, calories: { small: 5, medium: 5, large: 10 }, description: "Thé menthe et citron." },
+        { id: 315, name: "Menthe Gingembre & Citron", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 3.20, medium: 3.90, large: 4.60 }, calories: { small: 5, medium: 8, large: 10 }, description: "Thé menthe gingembre citron." },
+        // Chai Latte
+        { id: 316, name: "Épicé", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 160, medium: 210, large: 270 }, description: "Chai latte aux épices." },
+        { id: 317, name: "Noisette", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 170, medium: 220, large: 280 }, description: "Chai latte noisette." },
+        { id: 318, name: "Vanille", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 165, medium: 215, large: 275 }, description: "Chai latte vanille." },
+        { id: 319, name: "Caramel", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 175, medium: 225, large: 285 }, description: "Chai latte caramel." },
+        { id: 320, name: "Pain d'épices", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.20, medium: 5.20, large: 6.20 }, calories: { small: 180, medium: 230, large: 290 }, description: "Chai latte pain d'épices." },
+
+        // === CAFÉ GLACÉ ===
+        { id: 401, name: "Iced Americano", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 5, medium: 10, large: 15 }, description: "Americano glacé rafraîchissant." },
+        { id: 402, name: "Cold Brew", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 3.80, medium: 4.80, large: 5.80 }, calories: { small: 5, medium: 5, large: 10 }, description: "Café infusé à froid." },
+        { id: 403, name: "Cold Brew Latte", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.20, medium: 5.20, large: 6.20 }, calories: { small: 80, medium: 110, large: 150 }, description: "Cold brew avec lait crémeux." },
+        { id: 404, name: "Iced Latte", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 100, medium: 140, large: 190 }, description: "Latte glacé classique." },
+        { id: 405, name: "Iced Latte Vanille", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.30, medium: 5.30, large: 6.30 }, calories: { small: 130, medium: 170, large: 220 }, description: "Latte glacé vanille." },
+        { id: 406, name: "Iced Latte Caramel", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.30, medium: 5.30, large: 6.30 }, calories: { small: 140, medium: 180, large: 230 }, description: "Latte glacé caramel." },
+        { id: 407, name: "Iced Latte Noisette", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.30, medium: 5.30, large: 6.30 }, calories: { small: 135, medium: 175, large: 225 }, description: "Latte glacé noisette." },
+        { id: 408, name: "Iced Latte Brown Sugar", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 150, medium: 190, large: 240 }, description: "Latte glacé sucre brun." },
+        { id: 409, name: "Iced Latte Mocha", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 160, medium: 210, large: 270 }, description: "Latte glacé mocha." },
+        { id: 410, name: "Iced Latte Mocha Blanc", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 165, medium: 215, large: 275 }, description: "Latte glacé mocha blanc." }
+      ],
+      rewards: [
+        { name: "Café gratuit", points: 200 },
+        { name: "Pâtisserie", points: 150 },
+        { name: "Surclassement", points: 50 }
+      ],
+      stores: [
+        {
+          id: 1,
+          name: "Coffee Beanz Gare de Verviers Central",
+          address: "Rue d'Ensival, 1\n4800 Verviers",
+          distance: "2,1 km",
+          phone: "087 22 85 40",
+          hours: {
+            "Lundi": "05:00 - 21:00",
+            "Mardi": "05:00 - 21:00",
+            "Mercredi": "05:00 - 21:00",
+            "Jeudi": "05:00 - 21:00",
+            "Vendredi": "05:00 - 21:00",
+            "Samedi": "05:00 - 21:00",
+            "Dimanche": "07:00 - 21:00"
+          },
+          facilities: ["wifi", "parking", "accès PMR", "recharge sans fil"]
+        }
+      ]
+    };
+
+    // ===== STATE =====
+    let state = {
+      currentScreen: 'home',
+      selectedProduct: null,
+      selectedStore: null,
+      selectedCategory: 'all',
+      quantity: 1,
+      selectedSize: 'medium',
+      selectedMilk: 'full',
+      cart: [],
+      headerOpacity: 0
+    };
+
+    // ===== COULEURS =====
+    const colors = {
+      primary: '#1a1a1a',
+      primaryLight: '#4b5563',
+      primaryDark: '#0a0a0a',
+      accent: '#e5e7eb'
+    };
+
+    // ===== HELPERS =====
+    function getGreeting() {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Bonjour';
+      if (hour < 18) return 'Bon après-midi';
+      return 'Bonsoir';
+    }
+
+    // ===== COMPOSANTS SVG =====
+    function createWavePattern(height = 400) {
+      const waveWidth = 50;
+      const amplitude = 12;
+      const strokeWidth = 18;
+      const numWaves = 12;
+      
+      let paths = '';
+      for (let i = 0; i < numWaves; i++) {
+        let d = '';
+        const steps = 50;
+        for (let j = 0; j <= steps; j++) {
+          const y = (j / steps) * height;
+          const x = (waveWidth * i + waveWidth / 2) + Math.sin((y / height) * Math.PI * 6) * amplitude;
+          d += (j === 0 ? 'M' : 'L') + ` ${x} ${y} `;
+        }
+        paths += `<path d="${d}" stroke="${colors.primaryLight}" stroke-width="${strokeWidth}" fill="none" stroke-linecap="round" opacity="0.6"/>`;
+      }
+      
+      return `
+        <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice" viewBox="0 0 ${waveWidth * numWaves} ${height}" style="background-color: ${colors.primary}">
+          ${paths}
+        </svg>
+      `;
+    }
+
+    function createBeanzCup(size = 60) {
+      const h = size * 1.4;
+      return `
+        <div style="width: ${size}px; height: ${h}px;">
+          <svg viewBox="0 0 60 84" style="width: 100%; height: 100%;">
+            <ellipse cx="30" cy="8" rx="24" ry="5" fill="#e5e7eb"/>
+            <path d="M6 8 Q6 4 30 4 Q54 4 54 8" fill="#d1d5db"/>
+            <rect x="8" y="6" width="44" height="6" rx="1" fill="#e5e7eb"/>
+            <ellipse cx="30" cy="6" rx="20" ry="3" fill="#d1d5db"/>
+            <path d="M10 14 L14 76 Q14 80 30 80 Q46 80 46 76 L50 14 Z" fill="${colors.primary}"/>
+            <path d="M10 14 L11 22 Q30 24 49 22 L50 14 Z" fill="${colors.primaryDark}"/>
+            <text x="28" y="50" text-anchor="middle" font-size="11" font-weight="bold" fill="white" font-family="'DM Sans', sans-serif" letter-spacing="1" transform="rotate(-90, 28, 50)">BEANZ</text>
+            <text x="40" y="50" text-anchor="middle" font-size="5" font-weight="400" fill="white" font-family="'DM Sans', sans-serif" letter-spacing="2" opacity="0.9" transform="rotate(-90, 40, 50)">COFFEE</text>
+          </svg>
+        </div>
+      `;
+    }
+
+    function createCoffeeBeans() {
+      return `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="${colors.primary}">
+          <ellipse cx="8" cy="12" rx="5" ry="7"/>
+          <path d="M8 6 Q6 12 8 18" stroke="white" stroke-width="1.5" fill="none"/>
+          <ellipse cx="16" cy="12" rx="5" ry="7"/>
+          <path d="M16 6 Q14 12 16 18" stroke="white" stroke-width="1.5" fill="none"/>
+        </svg>
+      `;
+    }
+
+    function createPalestineFlag() {
+      return `
+        <svg viewBox="0 0 64 40" class="w-full h-full">
+          <rect x="0" y="0" width="64" height="13.33" fill="#000000"/>
+          <rect x="0" y="13.33" width="64" height="13.33" fill="#FFFFFF"/>
+          <rect x="0" y="26.66" width="64" height="13.34" fill="#009639"/>
+          <polygon points="0,0 24,20 0,40" fill="#CE1126"/>
+        </svg>
+      `;
+    }
+
+    function createQRCode() {
+      return `
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+          <rect x="5" y="5" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="8" y="8" width="14" height="14" fill="white"/>
+          <rect x="11" y="11" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="75" y="5" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="78" y="8" width="14" height="14" fill="white"/>
+          <rect x="81" y="11" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="5" y="75" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="8" y="78" width="14" height="14" fill="white"/>
+          <rect x="11" y="81" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="30" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="34" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="58" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="50" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="42" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="66" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="42" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="66" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="86" width="4" height="4" fill="${colors.primary}"/>
+        </svg>
+      `;
+    }
+
+    // ===== ÉCRANS =====
+    function renderHomeScreen() {
+      return `
+        <div class="h-full relative">
+          <!-- Header FIXE -->
+          <div class="absolute top-0 left-0 right-0" style="height: 250px; overflow: hidden;">
+            ${createWavePattern(400)}
+            <div class="absolute inset-0 bg-black" style="opacity: 0"></div>
+            <div class="relative z-10 p-4 pt-6" id="headerContent">
+              <div class="flex justify-between items-start">
+                <h1 class="text-xl font-light text-white">${getGreeting()} ${db.user.name}</h1>
+                <button onclick="navigate('settings')" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Boutons rapides -->
+              <div class="flex mt-4 px-6" style="justify-content: space-between; margin-top: 28px;">
+                <button onclick="navigate('order')" class="bg-white rounded-xl p-4 flex flex-col items-center justify-center shadow-lg" style="width: 100px; height: 100px; padding-bottom: 21px;">
+                  <svg width="42" height="42" viewBox="223 39 140 293" style="margin-bottom: 10px;" fill="${colors.primary}" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(0,327) scale(0.1,-0.1)" stroke="none">
+                      <path d="M2284 2826 c-47 -21 -68 -55 -99 -160 -28 -96 -28 -96 -62 -96 -71 0 -112 -43 -127 -135 -4 -22 -9 -47 -12 -56 -9 -31 24 -51 79 -48 51 3 51 3 69 -156 19 -178 131 -1129 152 -1297 14 -116 33 -156 87 -183 26 -14 29 -20 29 -66 0 -61 11 -84 50 -104 25 -13 99 -15 498 -15 455 0 470 1 495 20 30 23 50 77 45 119 -2 25 4 34 32 53 19 13 43 39 53 58 13 26 38 219 102 770 47 404 88 751 91 770 5 35 5 35 58 32 72 -5 81 7 65 90 -6 35 -18 75 -26 90 -16 34 -61 58 -105 58 -33 0 -33 1 -57 83 -34 115 -54 151 -95 171 -30 14 -101 16 -663 16 -503 -1 -634 -3 -659 -14z m1299 -68 c13 -11 66 -153 67 -180 0 -5 -319 -8 -710 -8 -390 0 -710 2 -710 5 0 21 54 168 66 180 13 13 99 15 643 15 486 0 631 -3 644 -12z m215 -270 c6 -7 13 -30 17 -50 7 -38 7 -38 -875 -38 -882 0 -882 0 -875 33 4 17 11 40 17 50 8 16 59 17 857 17 667 0 851 -3 859 -12z m-102 -193 c-7 -46 -102 -846 -146 -1230 -24 -203 -34 -265 -49 -285 -18 -25 -18 -25 -551 -28 -577 -2 -573 -3 -585 51 -3 12 -43 351 -90 752 -47 402 -87 739 -90 751 -3 12 -3 23 -1 25 3 2 345 4 761 4 757 0 757 0 751 -40z m-276 -1653 c0 -21 -5 -43 -12 -50 -18 -18 -927 -17 -933 1 -2 6 -6 29 -10 50 -6 37 -6 37 475 37 480 0 480 0 480 -38z"/>
+                      <path d="M2823 1935 c-101 -51 -170 -152 -199 -295 -55 -276 120 -540 343 -517 302 31 410 525 167 759 -85 81 -211 102 -311 53z m62 -62 c-4 -10 -14 -45 -22 -78 -20 -79 -6 -159 47 -269 53 -108 60 -170 31 -266 -21 -70 -23 -72 -49 -65 -136 33 -236 240 -203 419 13 68 52 160 84 195 27 30 97 81 110 81 5 0 6 -8 2 -17z m138 3 c47 -19 123 -108 146 -172 71 -189 4 -420 -143 -496 -37 -19 -38 -19 -31 -1 4 10 15 45 23 77 21 79 6 166 -47 275 -53 109 -60 168 -32 261 23 75 29 79 84 56z"/>
+                    </g>
+                  </svg>
+                  <span class="text-xs font-medium" style="color: ${colors.primary}; margin-top: -12px;">Commander</span>
+                </button>
+                <button onclick="navigate('scan')" class="bg-white rounded-xl p-4 flex flex-col items-center justify-center shadow-lg" style="width: 100px; height: 100px;">
+                  <svg width="32" height="32" viewBox="0 0 122.61 122.88" fill="${colors.primary}" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M26.68,26.77H51.91V51.89H26.68V26.77ZM35.67,0H23.07A22.72,22.72,0,0,0,14.3,1.75a23.13,23.13,0,0,0-7.49,5l0,0a23.16,23.16,0,0,0-5,7.49A22.77,22.77,0,0,0,0,23.07V38.64H10.23V23.07a12.9,12.9,0,0,1,1-4.9A12.71,12.71,0,0,1,14,14l0,0a12.83,12.83,0,0,1,9.07-3.75h12.6V0ZM99.54,0H91.31V10.23h8.23a12.94,12.94,0,0,1,4.9,1A13.16,13.16,0,0,1,108.61,14l.35.36h0a13.07,13.07,0,0,1,2.45,3.82,12.67,12.67,0,0,1,1,4.89V38.64h10.23V23.07a22.95,22.95,0,0,0-6.42-15.93h0l-.37-.37a23.16,23.16,0,0,0-7.49-5A22.77,22.77,0,0,0,99.54,0Zm23.07,99.81V82.52H112.38V99.81a12.67,12.67,0,0,1-1,4.89,13.08,13.08,0,0,1-2.8,4.17,12.8,12.8,0,0,1-9.06,3.78H91.31v10.23h8.23a23,23,0,0,0,16.29-6.78,23.34,23.34,0,0,0,5-7.49,23,23,0,0,0,1.75-8.8ZM23.07,122.88h12.6V112.65H23.07A12.8,12.8,0,0,1,14,108.87l-.26-.24a12.83,12.83,0,0,1-2.61-4.08,12.7,12.7,0,0,1-.91-4.74V82.52H0V99.81a22.64,22.64,0,0,0,1.67,8.57,22.86,22.86,0,0,0,4.79,7.38l.31.35a23.2,23.2,0,0,0,7.5,5,22.84,22.84,0,0,0,8.8,1.75Zm66.52-33.1H96v6.33H89.59V89.78Zm-12.36,0h6.44v6H70.8V83.47H77V77.22h6.34V64.76H89.8v6.12h6.12v6.33H89.8v6.33H77.23v6.23ZM58.14,77.12h6.23V70.79h-6V64.46h6V58.13H58.24v6.33H51.8V58.13h6.33V39.33h6.43V58.12h6.23v6.33h6.13V58.12h6.43v6.33H77.23v6.33H70.8V83.24H64.57V95.81H58.14V77.12Zm31.35-19h6.43v6.33H89.49V58.12Zm-50.24,0h6.43v6.33H39.25V58.12Zm-12.57,0h6.43v6.33H26.68V58.12ZM58.14,26.77h6.43V33.1H58.14V26.77ZM26.58,70.88H51.8V96H26.58V70.88ZM32.71,77h13V89.91h-13V77Zm38-50.22H95.92V51.89H70.7V26.77Zm6.13,6.1h13V45.79h-13V32.87Zm-44,0h13V45.79h-13V32.87Z"/></svg>
+                  <span class="text-xs font-medium mt-2" style="color: ${colors.primary}; transform: translateY(-2px);">Scanner</span>
+                </button>
+                <button onclick="navigate('stores')" class="bg-white rounded-xl p-4 flex flex-col items-center justify-center shadow-lg" style="width: 100px; height: 100px;">
+                  <svg width="62" height="62" viewBox="0 0 600 400" fill="${colors.primary}" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(0.000000,400.000000) scale(0.050000,-0.050000)"
+fill="${colors.primary}" stroke="none">
+<path d="M3370 7463 c-214 -97 -250 -206 -250 -750 l0 -417 -320 -883 c-189
+-522 -320 -912 -320 -954 0 -248 253 -519 484 -519 34 0 36 -60 36 -1419 l0
+-1419 -85 -6 -85 -6 -6 -267 c-3 -180 2 -277 18 -295 34 -42 6282 -42 6316 0
+16 18 21 115 18 295 l-6 267 -85 6 -85 6 0 1417 0 1416 87 14 c229 34 433 275
+433 510 0 47 -122 409 -320 955 l-320 880 0 418 c0 545 -36 654 -250 751 -124
+56 -5136 56 -5260 0z m5229 -156 c112 -66 121 -105 121 -545 l0 -402 -2720 0
+-2720 0 0 402 c0 437 8 477 117 544 81 50 5117 51 5202 1z m-4659 -1100 c0 -7
+-108 -372 -240 -810 -132 -439 -240 -802 -240 -807 0 -6 -181 -10 -402 -10
+-225 0 -398 8 -395 18 4 9 138 378 297 819 l290 802 345 1 c190 0 345 -6 345
+-13z m979 -40 c-11 -29 -115 -369 -231 -755 -115 -386 -219 -731 -230 -767
+l-21 -65 -416 0 -416 0 26 75 c19 57 400 1318 462 1530 9 32 47 35 428 35
+l418 0 -20 -53z m681 44 c0 -5 -45 -359 -100 -787 -55 -428 -100 -793 -100
+-811 0 -29 -43 -33 -402 -33 -374 0 -402 3 -393 35 5 19 116 388 246 820 l237
+785 256 0 c141 0 256 -4 256 -9z m741 -735 c52 -403 99 -770 106 -815 l13 -81
+-462 0 -462 0 10 45 c6 25 53 383 104 795 52 413 97 762 101 776 6 19 67 24
+253 20 l244 -6 93 -734z m808 -41 c130 -432 241 -801 246 -820 9 -32 -19 -35
+-393 -35 -369 0 -402 3 -402 35 0 33 -164 1333 -192 1520 l-13 85 259 0 258 0
+237 -785z m758 750 c62 -212 443 -1473 462 -1530 l26 -75 -416 0 -416 0 -21
+65 c-11 36 -115 381 -230 767 -116 386 -220 726 -231 755 l-20 53 418 0 c381
+0 419 -3 428 -35z m1133 -768 c160 -440 293 -809 297 -819 3 -10 -168 -18
+-395 -18 -221 0 -402 4 -402 10 0 5 -108 369 -240 808 -132 439 -240 803 -240
+810 0 7 155 12 345 12 l345 -1 290 -802z m-5620 -1013 c0 -192 -287 -364 -506
+-303 -124 35 -323 256 -285 318 16 26 791 11 791 -15z m988 -14 c-116 -390
+-724 -398 -818 -10 l-12 50 421 0 c411 0 420 -1 409 -40z m962 -10 c-87 -356
+-600 -394 -767 -56 -56 112 -76 106 376 106 l403 0 -12 -50z m1080 0 c-58
+-236 -430 -368 -678 -240 -105 54 -202 159 -222 240 l-12 50 462 0 462 0 -12
+-50z m990 34 c0 -42 -85 -175 -149 -230 -216 -190 -594 -78 -661 196 l-12 50
+411 0 c226 0 411 -7 411 -16z m970 -34 c-83 -337 -590 -397 -764 -89 -82 144
+-95 139 365 139 l411 0 -12 -50z m953 7 c-62 -328 -524 -405 -718 -118 -112
+165 -121 161 330 158 373 -2 395 -4 388 -40z m-5634 -386 c233 -120 570 -53
+710 141 l57 79 41 -66 c169 -273 634 -290 851 -32 l73 88 106 -102 c243 -235
+626 -233 871 5 62 59 115 97 119 85 102 -305 694 -344 900 -61 l54 76 78 -90
+c218 -249 627 -249 841 1 l69 81 80 -90 c47 -54 120 -108 180 -134 l101 -43 0
+-1420 0 -1419 -2860 0 -2860 0 0 1419 0 1418 106 49 c62 28 139 86 184 138
+l78 89 61 -80 c34 -45 106 -104 160 -132z m5307 -3191 l-6 -150 -3030 0 -3030
+0 -6 150 -6 150 3042 0 3042 0 -6 -150z"/>
+<path d="M4066 7201 c-176 -107 -205 -499 -48 -649 146 -140 422 -34 422 161
+0 81 -124 67 -161 -18 -98 -222 -259 67 -176 315 43 127 158 120 187 -11 20
+-88 150 -89 150 -2 0 181 -218 299 -374 204z"/>
+<path d="M4860 7205 c-190 -95 -202 -571 -16 -684 222 -136 410 40 392 367
+-16 295 -166 422 -376 317z m183 -138 c38 -47 37 -368 -1 -415 -42 -50 -127
+-34 -144 28 -68 245 35 519 145 387z"/>
+<path d="M5554 6857 l3 -364 77 0 76 0 0 144 0 143 105 0 105 0 0 69 0 70
+-103 -5 -104 -4 -2 95 -2 95 148 0 c126 0 146 5 135 32 -7 17 -12 44 -12 60 0
+22 -43 28 -215 28 l-215 0 4 -363z"/>
+<path d="M6240 6855 l0 -365 75 2 75 2 6 143 6 143 110 0 111 0 -7 65 -6 65
+-105 -6 -105 -7 0 102 0 101 140 0 140 0 0 60 0 60 -220 0 -220 0 0 -365z"/>
+<path d="M6920 6855 l0 -365 220 0 220 0 0 65 0 65 -140 0 -140 0 0 90 0 90
+110 0 110 0 0 72 0 73 -110 -14 -110 -14 0 92 0 91 140 0 140 0 0 60 0 60
+-220 0 -220 0 0 -365z"/>
+<path d="M7640 6855 l0 -365 220 0 220 0 0 65 0 65 -140 0 -140 0 0 90 0 90
+110 0 110 0 0 72 0 73 -110 -14 -110 -14 0 92 0 91 140 0 140 0 0 60 0 60
+-220 0 -220 0 0 -365z"/>
+<path d="M3584 3556 c-47 -47 -33 -2290 15 -2315 58 -32 1546 -28 1577 3 35
+35 35 2277 0 2312 -34 34 -1558 34 -1592 0z m1476 -1156 l0 -1020 -680 0 -680
+0 0 1020 0 1020 680 0 680 0 0 -1020z"/>
+<path d="M3784 2456 c-53 -53 -12 -136 68 -136 78 0 108 22 108 80 0 76 -118
+114 -176 56z"/>
+<path d="M6714 3437 c-43 -24 -43 -77 0 -154 33 -57 33 -64 0 -132 -42 -90
+-44 -188 -3 -247 65 -92 173 -31 130 74 -20 48 -19 69 7 119 79 152 -20 404
+-134 340z"/>
+<path d="M6954 3437 c-43 -24 -43 -61 -1 -142 30 -58 30 -70 -3 -159 -44 -125
+-28 -229 42 -260 75 -35 123 19 89 101 -20 49 -19 69 7 120 79 152 -20 404
+-134 340z"/>
+<path d="M7194 3437 c-42 -24 -43 -61 -2 -141 30 -58 30 -70 -3 -166 -38 -111
+-30 -186 23 -240 65 -65 161 12 112 90 -20 33 -19 51 6 99 81 157 -19 423
+-136 358z"/>
+<path d="M6144 2796 c-35 -35 -31 -382 7 -527 41 -160 136 -313 269 -434 l110
+-100 -108 12 c-154 17 -241 -53 -155 -125 51 -42 1493 -20 1521 23 44 71 -8
+106 -147 98 l-125 -7 139 137 c88 88 152 171 177 232 34 85 44 95 102 95 268
+0 312 452 49 509 -30 7 -63 32 -74 57 l-19 44 -861 5 c-653 4 -866 0 -885 -19z
+m1631 -305 c-61 -986 -1425 -978 -1507 8 l-14 161 766 0 766 0 -11 -169z m241
+-27 c5 -48 -5 -69 -45 -95 -65 -43 -65 -43 -55 97 9 132 87 131 100 -2z"/>
+</g>
+                  </svg>
+                  <span class="text-xs font-medium mt-2" style="color: ${colors.primary}; transform: translateY(-6px);">Boutiques</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contenu scrollable -->
+          <div id="homeScroll" class="h-full overflow-y-auto scroll-content hide-scrollbar">
+            <div style="height: 250px;"></div>
+            <div class="bg-gray-100 relative z-20 min-h-full" style="padding-top: 48px;">
+              
+              <!-- Carte fidélité en absolute, chevauche seule le header noir -->
+              <div class="px-4 absolute left-0 right-0" style="top: -40px; z-index: 30;">
+                <div class="rounded-2xl p-4 shadow-xl" style="background-color: ${colors.accent}">
+                  <div class="flex items-center gap-3">
+                    ${createBeanzCup(45)}
+                    <div class="flex-1">
+                      <div class="flex items-center justify-center gap-2 mb-2">
+                        ${createCoffeeBeans()}
+                        <span class="text-xl font-bold" style="color: ${colors.primary}">${db.user.points} / 2000</span>
+                      </div>
+                      <div class="h-2 bg-white rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all" style="width: ${(db.user.points / 2000) * 100}%; background-color: ${colors.primary}"></div>
+                      </div>
+                      <div class="flex justify-between mt-1">
+                        <span class="text-xs" style="color: ${colors.primary}">Total: ${db.user.points}</span>
+                        <button onclick="navigate('history')" class="text-xs font-medium flex items-center gap-1" style="color: ${colors.primary}">
+                          Voir l'historique <span>›</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event 1 -->
+              <div class="px-3 mt-5">
+                <div class="bg-white rounded-2xl overflow-hidden shadow-lg">
+                  <div class="h-40 relative overflow-hidden" style="background-color: ${colors.accent}">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                      <div class="text-6xl opacity-30">☕</div>
+                    </div>
+                    <div class="absolute inset-0 p-4 flex flex-col justify-between">
+                      <div>
+                        <p class="text-xs font-bold uppercase tracking-wider" style="color: ${colors.primary}">LATTE ART</p>
+                        <p class="text-xs font-bold uppercase tracking-wider" style="color: ${colors.primary}">WORKSHOP</p>
+                        <p class="text-lg font-bold mt-1" style="color: ${colors.primary}">AVEC <span style="font-weight: 800">BEANZ</span></p>
+                        <p class="text-xs mt-1" style="color: ${colors.primary}">14 DÉCEMBRE | 15H-17H</p>
+                      </div>
+                      <div class="flex justify-end">${createBeanzCup(50)}</div>
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <h3 class="text-lg font-bold" style="color: ${colors.primary}">Apprenez le Latte Art</h3>
+                    <p class="text-sm mt-1" style="color: ${colors.primaryLight}">Inscrivez-vous pour un atelier créatif le 14 Déc.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event 2 -->
+              <div class="px-3 mt-4 pb-6">
+                <div class="bg-white rounded-2xl overflow-hidden shadow-lg">
+                  <div class="h-32 relative overflow-hidden" style="background-color: ${colors.primary}">
+                    <div class="absolute inset-0 opacity-30">
+                      <svg class="w-full h-full" preserveAspectRatio="xMidYMid slice" viewBox="0 0 400 150">
+                        ${Array.from({length: 10}, (_, i) => `<path d="M${i * 45} 0 Q${i * 45 + 10} 37.5 ${i * 45} 75 Q${i * 45 - 10} 112.5 ${i * 45} 150" stroke="${colors.primaryLight}" stroke-width="12" fill="none"/>`).join('')}
+                      </svg>
+                    </div>
+                    <div class="absolute inset-0 p-4 flex items-center justify-between">
+                      <div>
+                        <p class="text-white text-xs font-bold uppercase tracking-wider">WINTER VIBES</p>
+                        <p class="text-white text-lg font-bold mt-1">FESTIVE CINEMA</p>
+                        <p class="text-white/80 text-xs mt-1">21 DÉCEMBRE | 19H</p>
+                      </div>
+                      <div class="text-4xl">🎬</div>
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <h3 class="text-lg font-bold" style="color: ${colors.primary}">Cinéma en Plein Air</h3>
+                    <p class="text-sm mt-1" style="color: ${colors.primaryLight}">Film de Noël avec chocolat chaud offert.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panier flottant -->
+          <div class="absolute bottom-20 right-4 z-30">
+            <button class="w-14 h-14 rounded-full flex items-center justify-center shadow-lg" style="background-color: ${colors.primary}">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </button>
+            ${state.cart.length > 0 ? `
+              <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style="background-color: ${colors.primary}; border: 2px solid white; color: white;">
+                ${state.cart.length}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderOrderScreen() {
+      const categories = [
+        { id: 'all', label: 'Tout' },
+        { id: 'hot', label: 'Boissons chaudes' },
+        { id: 'cold', label: 'Boissons froides' },
+        { id: 'iced', label: 'Café glacé' },
+        { id: 'food', label: 'Food' }
+      ];
+
+      // Filter products by selected category
+      const filtered = state.selectedCategory === 'all' 
+        ? db.products 
+        : db.products.filter(p => p.category === state.selectedCategory);
+
+      // Group by subcategory
+      const grouped = {};
+      filtered.forEach(p => {
+        if (!grouped[p.subcategory]) grouped[p.subcategory] = [];
+        grouped[p.subcategory].push(p);
+      });
+
+      // Get subcategories for current category
+      const subcategories = Object.keys(grouped);
+
+      return `
+        <div id="orderScroll" class="h-full overflow-y-auto scroll-content hide-scrollbar bg-white">
+          <!-- Header noir style Costa -->
+          <div class="relative" style="background-color: ${colors.primary}">
+            <div class="absolute inset-0 opacity-20">
+              ${Array.from({length: 8}, (_, i) => `<svg class="absolute" style="left:${i * 55}px; top:0; height:100%;" viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M20 0 Q30 25 20 50 Q10 75 20 100" stroke="${colors.primaryLight}" stroke-width="8" fill="none"/></svg>`).join('')}
+            </div>
+            <div class="relative z-10 p-4 flex items-center justify-between">
+              <button onclick="navigate('history')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15,15"/>
+                </svg>
+              </button>
+              <div class="text-center">
+                <p class="text-white font-bold text-sm">Coffee Beanz Verviers</p>
+              </div>
+              <div class="w-6"></div>
+            </div>
+          </div>
+
+          <!-- Barre de recherche -->
+          <div class="p-3 bg-white">
+            <div class="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <span class="text-sm text-gray-400">Rechercher</span>
+            </div>
+          </div>
+
+          <!-- Onglets catégories principales -->
+          <div class="px-3 bg-white sticky top-0 z-20 border-b border-gray-100">
+            <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+              ${categories.map(cat => `
+                <button onclick="switchCategory('${cat.id}')" class="whitespace-nowrap pb-1 text-sm font-bold" style="color: ${state.selectedCategory === cat.id ? colors.primary : '#9ca3af'}; border-bottom: ${state.selectedCategory === cat.id ? '2px solid ' + colors.primary : '2px solid transparent'}">
+                  ${cat.label}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Barre sous-catégories (scrollable) -->
+          ${subcategories.length > 1 ? `
+            <div class="px-3 py-2 bg-white sticky top-10 z-20 border-b border-gray-100">
+              <div class="flex gap-3 overflow-x-auto hide-scrollbar">
+                ${subcategories.map(sub => `
+                  <button onclick="scrollToSubcategory('${sub.replace(/[^a-zA-Z0-9]/g, '_')}')" class="whitespace-nowrap text-xs font-bold px-1 py-1" style="color: ${colors.primaryLight}">
+                    ${sub}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Produits groupés par sous-catégorie -->
+          <div class="pb-4">
+            ${Object.entries(grouped).map(([subcategory, products]) => `
+              <!-- Bandeau sous-catégorie -->
+              <div id="sub_${subcategory.replace(/[^a-zA-Z0-9]/g, '_')}" class="px-4 py-2 mt-1" style="background-color: ${colors.accent}">
+                <h2 class="text-sm font-bold" style="color: ${colors.primary}">${subcategory}</h2>
+              </div>
+              <!-- Grille produits -->
+              <div class="grid grid-cols-2">
+                ${products.map(product => `
+                  <button onclick="selectProduct(${product.id})" class="flex flex-col items-center p-4 border-b border-r border-gray-100 relative active:bg-gray-50">
+                    <div class="absolute top-3 right-3">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${colors.primaryLight}" stroke-width="1.5">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                      </svg>
+                    </div>
+                    <div class="mb-3 mt-2" style="height: 80px; display: flex; align-items: center; justify-content: center;">
+                      ${product.image.includes('.jpg') || product.image.includes('.png') 
+                        ? `<img src="${product.image}" alt="${product.name}" style="max-height: 80px; max-width: 100%; object-fit: contain;">` 
+                        : `<span class="text-5xl">${product.image}</span>`}
+                    </div>
+                    <p class="text-xs font-bold text-center" style="color: ${colors.primary}">${product.name}</p>
+                  </button>
+                `).join('')}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProductScreen() {
+      if (!state.selectedProduct) return '';
+      const p = state.selectedProduct;
+      const currentPrice = p.prices[state.selectedSize] * state.quantity;
+      const currentCalories = p.calories[state.selectedSize];
+
+      return `
+        <div class="h-full overflow-y-auto bg-white pb-24 hide-scrollbar">
+          <div class="p-3 flex justify-end">
+            <button onclick="navigate('order')" class="w-8 h-8 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="text-center py-4">
+            <div class="text-7xl">${p.image}</div>
+          </div>
+
+          <div class="px-4">
+            <div class="flex justify-between items-start">
+              <h1 class="text-xl font-bold" style="color: ${colors.primary}">${p.name}</h1>
+              <button>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
+            <p class="text-gray-600 mt-2 text-xs leading-relaxed">${p.description}</p>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Quantité -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Quantité</h3>
+            <div class="flex items-center justify-center gap-4">
+              <button onclick="updateQuantity(-1)" class="w-10 h-10 rounded-full flex items-center justify-center text-xl" style="border: 2px solid ${colors.primary}; color: ${colors.primary}">−</button>
+              <span class="text-xl font-bold w-6 text-center" style="color: ${colors.primary}">${state.quantity}</span>
+              <button onclick="updateQuantity(1)" class="w-10 h-10 rounded-full flex items-center justify-center text-xl" style="border: 2px solid ${colors.primary}; color: ${colors.primary}">+</button>
+            </div>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Taille -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Taille</h3>
+            <div class="flex justify-center gap-2">
+              ${['small', 'medium', 'large'].map(size => `
+                <button onclick="updateSize('${size}')" class="flex flex-col items-center p-3 rounded-xl transition-all" style="min-width: 70px; background-color: ${state.selectedSize === size ? colors.accent : 'white'}; border: ${state.selectedSize === size ? '2px solid ' + colors.primaryLight : '2px solid transparent'}">
+                  <svg viewBox="0 0 40 60" class="w-8 h-12">
+                    <path d="M8 ${60 - (size === 'small' ? 35 : size === 'medium' ? 45 : 55)} L12 55 C12 57 15 58 20 58 C25 58 28 57 28 55 L32 ${60 - (size === 'small' ? 35 : size === 'medium' ? 45 : 55)} Z" fill="none" stroke="${state.selectedSize === size ? colors.primary : '#9ca3af'}" stroke-width="2"/>
+                  </svg>
+                  <span class="text-xs font-medium mt-1" style="color: ${state.selectedSize === size ? colors.primary : '#9ca3af'}">${size === 'small' ? 'Petit' : size === 'medium' ? 'Moyen' : 'Grand'}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Lait -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Lait & Alternatives</h3>
+            <div class="flex justify-center gap-2">
+              ${[
+                { id: 'full', name: 'Lait Entier', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2h8l2 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6l2-4z"/><path d="M6 6h12"/></svg>' },
+                { id: 'soya', name: 'Soja', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="12" rx="8" ry="10"/><ellipse cx="12" cy="12" rx="4" ry="5"/></svg>' },
+                { id: 'almond', name: 'Amande', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8 2 4 8 4 14s4 8 8 8 8-2 8-8-4-12-8-12z"/><path d="M12 6v12"/></svg>' }
+              ].map(milk => `
+                <button onclick="updateMilk('${milk.id}')" class="flex flex-col items-center p-3 rounded-xl transition-all" style="min-width: 70px; background-color: ${state.selectedMilk === milk.id ? colors.accent : 'white'}; border: ${state.selectedMilk === milk.id ? '2px solid ' + colors.primaryLight : '2px solid transparent'}; color: ${state.selectedMilk === milk.id ? colors.primary : '#9ca3af'}">
+                  ${milk.icon}
+                  <span class="text-xs font-medium mt-1 text-center">${milk.name}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="px-4 mt-4">
+            <p class="text-xs text-gray-400 text-center">Les informations caloriques n'incluent pas les suppléments.</p>
+          </div>
+
+          <!-- Barre d'ajout -->
+          <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-3 flex items-center justify-between" style="max-width: 448px; margin: 0 auto;">
+            <div>
+              <p class="text-xl font-bold" style="color: ${colors.primary}">${currentPrice.toFixed(2)}€</p>
+              <p class="text-xs text-gray-500">${currentCalories} kcal</p>
+            </div>
+            <button onclick="addToCart()" class="px-6 py-3 rounded-full font-bold text-white text-sm" style="background-color: ${colors.primary}">Ajouter</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderScanScreen() {
+      return `
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar" style="background-color: ${colors.primary}">
+          <div class="p-4 flex justify-between items-center">
+            <h1 class="text-lg font-bold text-white">BEANZ WALLET</h1>
+            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Carte membre -->
+          <div class="px-4">
+            <div class="rounded-2xl overflow-hidden shadow-lg relative" style="height: 180px;">
+              <div class="absolute inset-0 bg-gradient-to-br from-gray-400 to-gray-600">
+                <div class="absolute inset-0 opacity-20">
+                  <div class="absolute top-4 right-4 text-6xl">☕</div>
+                  <div class="absolute bottom-8 right-12 text-4xl">☕</div>
+                </div>
+              </div>
+              <div class="absolute inset-0 bg-gray-500/30"></div>
+              
+              <div class="absolute top-3 left-3 w-16 h-10 rounded overflow-hidden shadow-md">
+                ${createPalestineFlag()}
+              </div>
+
+              <div class="absolute top-3 right-3 bg-white/90 rounded-lg px-2 py-1">
+                <span class="text-xs font-bold" style="color: ${colors.primary}">BEANZ</span>
+                <span class="text-[8px] block text-center" style="color: ${colors.primary}">CLUB</span>
+              </div>
+
+              <div class="absolute bottom-0 left-0 right-0 p-4">
+                <p class="text-white text-xs font-medium opacity-80">FREE PALESTINE</p>
+                <p class="text-white text-lg font-bold">${db.user.name}</p>
+                <div class="flex justify-between items-end mt-1">
+                  <p class="text-white/80 text-xs">Membre depuis</p>
+                  <p class="text-white font-bold text-sm">${db.user.memberSince}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Balance -->
+          <div class="px-4 mt-4">
+            <div class="bg-gray-100 rounded-2xl p-4 flex justify-around items-center">
+              <div class="flex flex-col items-center">
+                ${createCoffeeBeans()}
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.points}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">Beanz Balance</span>
+              </div>
+              <div class="flex flex-col items-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                  <rect x="2" y="6" width="20" height="12" rx="2"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.eurBalance.toFixed(2)}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">EUR</span>
+              </div>
+              <div class="flex flex-col items-center">
+                ${createBeanzCup(28)}
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.freeCoffee}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">Free Coffee</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- QR Code -->
+          <div class="px-4 mt-4">
+            <div class="bg-white rounded-2xl p-6 flex flex-col items-center">
+              <div class="w-48 h-48 bg-white p-2 rounded-lg">
+                ${createQRCode()}
+              </div>
+              <p class="text-xs text-center mt-4" style="color: ${colors.primaryLight}">1 EUR = 4 Beanz</p>
+              <p class="text-xs text-center" style="color: ${colors.primaryLight}">200 Beanz = 1 Free Coffee</p>
+            </div>
+          </div>
+
+          <!-- Bouton Recharger -->
+          <div class="px-4 mt-4">
+            <button class="w-full py-3 rounded-full font-bold text-sm" style="background-color: ${colors.accent}; color: ${colors.primary}">Recharger</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGiftScreen() {
+      return `
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar">
+          <div class="bg-white p-3 shadow-sm">
+            <h1 class="text-lg font-bold text-center" style="color: ${colors.primary}">Cadeaux</h1>
+          </div>
+          <div class="p-4">
+            <div class="bg-white rounded-xl p-5 shadow text-center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5" class="mx-auto mb-3">
+                <polyline points="20,12 20,22 4,22 4,12"/>
+                <rect x="2" y="7" width="20" height="5"/>
+                <line x1="12" y1="22" x2="12" y2="7"/>
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+              </svg>
+              <h2 class="text-base font-bold mb-2" style="color: ${colors.primary}">Offrez un café</h2>
+              <p class="text-xs mb-4" style="color: ${colors.primaryLight}">Envoyez une carte cadeau</p>
+              <button class="w-full py-3 rounded-full font-bold text-white text-sm" style="background-color: ${colors.primary}">Envoyer</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTreatsScreen() {
+      return `
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar">
+          <div class="bg-white p-3 shadow-sm">
+            <h1 class="text-lg font-bold text-center" style="color: ${colors.primary}">Récompenses</h1>
+          </div>
+          <div class="p-4">
+            <div class="rounded-2xl p-4 mb-4" style="background-color: ${colors.accent}">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-bold" style="color: ${colors.primary}">Vos points</span>
+                <span class="text-xl font-bold" style="color: ${colors.primary}">${db.user.points}</span>
+              </div>
+              <div class="h-2 bg-white rounded-full overflow-hidden">
+                <div class="h-full rounded-full" style="width: ${(db.user.points / 200) * 100}%; background-color: ${colors.primary}"></div>
+              </div>
+              <p class="text-xs mt-2" style="color: ${colors.primary}">Plus que ${200 - db.user.points} points !</p>
+            </div>
+
+            <h2 class="text-sm font-bold mb-3" style="color: ${colors.primary}">Disponibles</h2>
+            
+            ${db.rewards.map(reward => `
+              <div class="bg-white rounded-xl p-3 shadow mb-2 flex items-center justify-between">
+                <div>
+                  <p class="font-medium text-sm" style="color: ${colors.primary}">${reward.name}</p>
+                  <p class="text-xs text-gray-500">${reward.points} pts</p>
+                </div>
+                <button class="px-3 py-1.5 rounded-full text-xs font-medium" style="background-color: ${db.user.points >= reward.points ? colors.primary : colors.accent}; color: ${db.user.points >= reward.points ? 'white' : colors.primaryLight}" ${db.user.points < reward.points ? 'disabled' : ''}>
+                  Échanger
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSettingsScreen() {
+      const menuSections = [
+        {
+          items: [
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="9"/></svg>', label: 'Informations personnelles', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>', label: 'Gérer les cartes cadeaux', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="2"/></svg>', label: 'Moyens de paiement', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15,15"/></svg>', label: 'Historique', screen: 'history' }
+          ]
+        },
+        {
+          items: [
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>', label: 'Inviter des amis', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>', label: 'Partager vos Beanz', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20,12 20,22 4,22 4,12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', label: 'E-Cadeaux', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>', label: 'Réclamer des Beanz', screen: null }
+          ]
+        },
+        {
+          items: [
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Contactez-nous', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', label: 'FAQ', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>', label: 'Localisation & Notifications', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7c0-1.1.9-2 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"/><path d="M8 12h8"/><path d="M8 8h8"/><path d="M8 16h5"/></svg>', label: 'Conditions générales', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>', label: 'Politique de confidentialité', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>', label: 'Supprimer le compte', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>', label: 'Changer de langue / NL', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>', label: 'Signaler un problème', screen: null }
+          ]
+        }
+      ];
+
+      return `
+        <div class="h-full overflow-y-auto hide-scrollbar bg-white">
+          <!-- Header noir avec vagues -->
+          <div class="relative" style="background-color: ${colors.primary}">
+            <div class="absolute inset-0 opacity-20">
+              ${Array.from({length: 8}, (_, i) => `<svg class="absolute" style="left:${i * 55}px; top:0; height:100%;" viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M20 0 Q30 25 20 50 Q10 75 20 100" stroke="${colors.primaryLight}" stroke-width="8" fill="none"/></svg>`).join('')}
+            </div>
+            <div class="relative z-10 p-4 flex items-center gap-3">
+              <button onclick="navigate('home')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <h1 class="text-lg font-bold text-white flex-1 text-center pr-8">SALUT ${db.user.name.toUpperCase()}</h1>
+            </div>
+          </div>
+
+          <!-- Bandeau ajout téléphone -->
+          <div class="p-4 flex items-center justify-between" style="background: linear-gradient(135deg, #f0a0a0, #f5c0a0);">
+            <span class="text-sm font-medium" style="color: ${colors.primary}">Ajouter votre numéro de téléphone</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+
+          <!-- Sections de menu -->
+          ${menuSections.map(section => `
+            <div class="border-b-8 border-gray-100">
+              ${section.items.map(item => `
+                <button onclick="${item.screen ? `navigate('${item.screen}')` : ''}" class="w-full flex items-center gap-4 px-5 py-4 border-b border-gray-100 active:bg-gray-50">
+                  <span style="color: ${colors.primary}">${item.icon}</span>
+                  <span class="flex-1 text-sm font-medium text-left" style="color: ${colors.primary}">${item.label}</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                </button>
+              `).join('')}
+            </div>
+          `).join('')}
+
+          <!-- Déconnexion -->
+          <div class="border-b-8 border-gray-100">
+            <button class="w-full flex items-center gap-4 px-5 py-4 active:bg-gray-50">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              <span class="flex-1 text-sm font-medium text-left" style="color: ${colors.primary}">Déconnexion</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Footer -->
+          <div class="py-6 px-4 text-center">
+            <p class="text-xs text-gray-400">v 1.0.0</p>
+            <p class="text-xs text-gray-400 mt-1">Designed with ❤️ in <svg style="display:inline-block; vertical-align:middle;" width="20" height="14" viewBox="0 0 30 20"><rect x="0" y="0" width="10" height="20" fill="#000"/><rect x="10" y="0" width="10" height="20" fill="#FFD100"/><rect x="20" y="0" width="10" height="20" fill="#EF3340"/></svg></p>
+            <p class="text-sm font-bold mt-2" style="color: ${colors.primary}">Despa&Co.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderHistoryScreen() {
+      return `
+        <div class="h-full flex flex-col bg-white">
+          <!-- Header noir avec vagues -->
+          <div class="relative" style="background-color: ${colors.primary}">
+            <div class="absolute inset-0 opacity-20">
+              ${Array.from({length: 8}, (_, i) => `<svg class="absolute" style="left:${i * 55}px; top:0; height:100%;" viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M20 0 Q30 25 20 50 Q10 75 20 100" stroke="${colors.primaryLight}" stroke-width="8" fill="none"/></svg>`).join('')}
+            </div>
+            <div class="relative z-10 p-4 flex items-center gap-3">
+              <button onclick="navigate('settings')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <h1 class="text-lg font-bold text-white flex-1 text-center pr-8">HISTORIQUE</h1>
+            </div>
+          </div>
+
+          <!-- Contenu central -->
+          <div class="flex-1 flex flex-col items-center justify-start pt-8">
+            ${createBeanzCup(80)}
+            <p class="text-gray-400 text-sm mt-4 text-center px-8">Commencez à acheter pour gagner des cafés gratuits</p>
+          </div>
+
+          <!-- Bouton Commander en bas -->
+          <div class="p-4">
+            <button onclick="navigate('order')" class="w-full py-4 rounded-full font-bold text-white text-sm" style="background-color: ${colors.primary}">Commander</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStoresScreen() {
+      return `
+        <div class="h-full overflow-y-auto hide-scrollbar bg-white">
+          <!-- Header noir -->
+          <div class="p-4 flex items-center gap-3" style="background-color: ${colors.primary}">
+            <button onclick="navigate('home')">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h1 class="text-lg font-bold text-white flex-1 text-center pr-8">SÉLECTIONNER UNE BOUTIQUE</h1>
+          </div>
+
+          <!-- Barre de recherche -->
+          <div class="p-3 flex items-center gap-2" style="background-color: ${colors.primary}">
+            <button class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: rgba(255,255,255,0.15);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+                <circle cx="8" cy="6" r="1.5" fill="white"/><circle cx="16" cy="12" r="1.5" fill="white"/><circle cx="10" cy="18" r="1.5" fill="white"/>
+              </svg>
+            </button>
+            <div class="flex-1 bg-white rounded-lg h-10 px-3 flex items-center">
+              <span class="text-sm text-gray-400">Rechercher...</span>
+            </div>
+            <button class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: ${colors.primary}; border: 1px solid rgba(255,255,255,0.3);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Séparateur grab -->
+          <div class="flex justify-center py-2">
+            <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
+          </div>
+
+          <!-- Section À PROXIMITÉ -->
+          <div class="px-4 pt-2 pb-1">
+            <p class="text-sm font-bold uppercase tracking-wider" style="color: ${colors.primary}">À proximité</p>
+          </div>
+
+          <div class="border-t border-gray-200">
+            ${db.stores.map(store => `
+              <button onclick="selectStore(${store.id})" class="w-full text-left p-4 flex items-center justify-between border-b border-gray-100 active:bg-gray-50">
+                <div class="flex-1 pr-4">
+                  <p class="font-bold text-sm" style="color: ${colors.primary}">${store.name}</p>
+                  <p class="text-xs text-gray-500 mt-1">${store.address.replace('\n', ', ')}</p>
+                  <p class="text-xs font-bold mt-1" style="color: ${colors.primary}">${store.distance}</p>
+                </div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStoreDetailScreen() {
+      const store = db.stores.find(s => s.id === state.selectedStore);
+      if (!store) return '';
+
+      const now = new Date();
+      const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+      const today = days[now.getDay()];
+      const todayHours = store.hours[today];
+      const closeTime = todayHours.split(' - ')[1];
+      const openTime = todayHours.split(' - ')[0];
+      const currentHour = now.getHours();
+      const closeHour = parseInt(closeTime.split(':')[0]);
+      const openHour = parseInt(openTime.split(':')[0]);
+      const isOpen = currentHour >= openHour && currentHour < closeHour;
+
+      const facilityIcons = {
+        'wifi': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
+        'parking': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><text x="12" y="17" text-anchor="middle" font-size="14" font-weight="bold" fill="currentColor" stroke="none">P</text></svg>',
+        'accès PMR': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="4" r="2"/><path d="M12 6v6"/><path d="M8 12h8"/><path d="M9 18a4 4 0 1 0 6 0"/><path d="M15 12v4"/></svg>',
+        'recharge sans fil': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="14" width="14" height="6" rx="2"/><line x1="12" y1="10" x2="12" y2="14"/><path d="M8 8a5.6 5.6 0 0 1 8 0"/><path d="M5 5a10 10 0 0 1 14 0"/></svg>'
+      };
+
+      return `
+        <div class="h-full overflow-y-auto hide-scrollbar bg-white">
+          <!-- Header noir -->
+          <div class="p-4 flex items-center gap-3" style="background-color: ${colors.primary}">
+            <button onclick="navigate('stores')">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h1 class="text-lg font-bold text-white flex-1 text-center pr-8">SÉLECTIONNER UNE BOUTIQUE</h1>
+          </div>
+
+          <!-- Grab bar -->
+          <div class="flex justify-center py-3">
+            <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
+          </div>
+
+          <!-- Info boutique -->
+          <div class="px-6 pb-4 text-center">
+            <h2 class="text-lg font-bold" style="color: ${colors.primary}">${store.name}</h2>
+            <p class="text-sm text-gray-500 mt-2">${store.address.replace('\n', ', ')}</p>
+            <p class="text-sm mt-2">
+              <span>📞</span> <a href="tel:${store.phone}" style="color: ${colors.primary}">${store.phone}</a>
+            </p>
+            <p class="text-sm font-bold mt-2" style="color: ${colors.primary}">
+              ${store.distance} | <span style="color: ${isOpen ? '#16a34a' : '#dc2626'}">${isOpen ? 'OUVERT' : 'FERMÉ'}</span> jusqu'à ${closeTime}
+            </p>
+
+            <!-- Boutons -->
+            <div class="flex gap-3 mt-4 justify-center">
+              <button class="px-6 py-3 rounded-full text-sm font-bold text-white" style="background-color: ${colors.primary}">Itinéraire</button>
+              <button class="px-6 py-3 rounded-full text-sm font-bold border-2" style="color: ${colors.primary}; border-color: ${colors.primary}" onclick="navigate('order')">Commander ici</button>
+            </div>
+          </div>
+
+          <div class="mx-6 border-t border-gray-200"></div>
+
+          <!-- Horaires -->
+          <div class="px-6 py-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-center mb-4" style="color: ${colors.primaryLight}">Horaires d'ouverture</h3>
+            ${Object.entries(store.hours).map(([day, hours]) => `
+              <div class="flex justify-between py-1.5">
+                <span class="text-sm font-bold" style="color: ${day === today ? colors.primary : colors.primaryLight}">${day}</span>
+                <span class="text-sm" style="color: ${day === today ? colors.primary : colors.primaryLight}">${hours}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Facilities -->
+          <div class="px-6 py-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-center mb-4" style="color: ${colors.primaryLight}">Équipements</h3>
+            <div class="grid grid-cols-2 gap-4">
+              ${store.facilities.map(f => `
+                <div class="flex flex-col items-center gap-1" style="color: ${colors.primary}">
+                  ${facilityIcons[f] || ''}
+                  <span class="text-xs">${f}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBottomNav() {
+      const items = [
+        { id: 'home', label: 'Accueil', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>' },
+        { id: 'scan', label: 'Scanner', icon: '<svg width="24" height="24" viewBox="0 0 122.61 122.88" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M26.68,26.77H51.91V51.89H26.68V26.77ZM35.67,0H23.07A22.72,22.72,0,0,0,14.3,1.75a23.13,23.13,0,0,0-7.49,5l0,0a23.16,23.16,0,0,0-5,7.49A22.77,22.77,0,0,0,0,23.07V38.64H10.23V23.07a12.9,12.9,0,0,1,1-4.9A12.71,12.71,0,0,1,14,14l0,0a12.83,12.83,0,0,1,9.07-3.75h12.6V0ZM99.54,0H91.31V10.23h8.23a12.94,12.94,0,0,1,4.9,1A13.16,13.16,0,0,1,108.61,14l.35.36h0a13.07,13.07,0,0,1,2.45,3.82,12.67,12.67,0,0,1,1,4.89V38.64h10.23V23.07a22.95,22.95,0,0,0-6.42-15.93h0l-.37-.37a23.16,23.16,0,0,0-7.49-5A22.77,22.77,0,0,0,99.54,0Zm23.07,99.81V82.52H112.38V99.81a12.67,12.67,0,0,1-1,4.89,13.08,13.08,0,0,1-2.8,4.17,12.8,12.8,0,0,1-9.06,3.78H91.31v10.23h8.23a23,23,0,0,0,16.29-6.78,23.34,23.34,0,0,0,5-7.49,23,23,0,0,0,1.75-8.8ZM23.07,122.88h12.6V112.65H23.07A12.8,12.8,0,0,1,14,108.87l-.26-.24a12.83,12.83,0,0,1-2.61-4.08,12.7,12.7,0,0,1-.91-4.74V82.52H0V99.81a22.64,22.64,0,0,0,1.67,8.57,22.86,22.86,0,0,0,4.79,7.38l.31.35a23.2,23.2,0,0,0,7.5,5,22.84,22.84,0,0,0,8.8,1.75Zm66.52-33.1H96v6.33H89.59V89.78Zm-12.36,0h6.44v6H70.8V83.47H77V77.22h6.34V64.76H89.8v6.12h6.12v6.33H89.8v6.33H77.23v6.23ZM58.14,77.12h6.23V70.79h-6V64.46h6V58.13H58.24v6.33H51.8V58.13h6.33V39.33h6.43V58.12h6.23v6.33h6.13V58.12h6.43v6.33H77.23v6.33H70.8V83.24H64.57V95.81H58.14V77.12Zm31.35-19h6.43v6.33H89.49V58.12Zm-50.24,0h6.43v6.33H39.25V58.12Zm-12.57,0h6.43v6.33H26.68V58.12ZM58.14,26.77h6.43V33.1H58.14V26.77ZM26.58,70.88H51.8V96H26.58V70.88ZM32.71,77h13V89.91h-13V77Zm38-50.22H95.92V51.89H70.7V26.77Zm6.13,6.1h13V45.79h-13V32.87Zm-44,0h13V45.79h-13V32.87Z"/></svg>' },
+        { id: 'order', label: 'Commander', icon: '<svg width="42" height="42" style="transform: translateY(4px)" viewBox="220 35 148 300" fill="white" xmlns="http://www.w3.org/2000/svg"><g transform="translate(0,327) scale(0.1,-0.1)" stroke="none"><path d="M2284 2826 c-47 -21 -68 -55 -99 -160 -28 -96 -28 -96 -62 -96 -71 0 -112 -43 -127 -135 -4 -22 -9 -47 -12 -56 -9 -31 24 -51 79 -48 51 3 51 3 69 -156 19 -178 131 -1129 152 -1297 14 -116 33 -156 87 -183 26 -14 29 -20 29 -66 0 -61 11 -84 50 -104 25 -13 99 -15 498 -15 455 0 470 1 495 20 30 23 50 77 45 119 -2 25 4 34 32 53 19 13 43 39 53 58 13 26 38 219 102 770 47 404 88 751 91 770 5 35 5 35 58 32 72 -5 81 7 65 90 -6 35 -18 75 -26 90 -16 34 -61 58 -105 58 -33 0 -33 1 -57 83 -34 115 -54 151 -95 171 -30 14 -101 16 -663 16 -503 -1 -634 -3 -659 -14z m1299 -68 c13 -11 66 -153 67 -180 0 -5 -319 -8 -710 -8 -390 0 -710 2 -710 5 0 21 54 168 66 180 13 13 99 15 643 15 486 0 631 -3 644 -12z m215 -270 c6 -7 13 -30 17 -50 7 -38 7 -38 -875 -38 -882 0 -882 0 -875 33 4 17 11 40 17 50 8 16 59 17 857 17 667 0 851 -3 859 -12z m-102 -193 c-7 -46 -102 -846 -146 -1230 -24 -203 -34 -265 -49 -285 -18 -25 -18 -25 -551 -28 -577 -2 -573 -3 -585 51 -3 12 -43 351 -90 752 -47 402 -87 739 -90 751 -3 12 -3 23 -1 25 3 2 345 4 761 4 757 0 757 0 751 -40z m-276 -1653 c0 -21 -5 -43 -12 -50 -18 -18 -927 -17 -933 1 -2 6 -6 29 -10 50 -6 37 -6 37 475 37 480 0 480 0 480 -38z"/><path d="M2823 1935 c-101 -51 -170 -152 -199 -295 -55 -276 120 -540 343 -517 302 31 410 525 167 759 -85 81 -211 102 -311 53z m62 -62 c-4 -10 -14 -45 -22 -78 -20 -79 -6 -159 47 -269 53 -108 60 -170 31 -266 -21 -70 -23 -72 -49 -65 -136 33 -236 240 -203 419 13 68 52 160 84 195 27 30 97 81 110 81 5 0 6 -8 2 -17z m138 3 c47 -19 123 -108 146 -172 71 -189 4 -420 -143 -496 -37 -19 -38 -19 -31 -1 4 10 15 45 23 77 21 79 6 166 -47 275 -53 109 -60 168 -32 261 23 75 29 79 84 56z"/></g></svg>' },
+        { id: 'gift', label: 'Cadeaux', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,12 20,22 4,22 4,12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' },
+        { id: 'treats', label: 'Récompenses', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>' }
+      ];
+
+      return `
+        <div class="bottom-nav">
+          ${items.map(item => {
+            if (item.id === 'order') {
+              const isOrderActive = state.currentScreen === 'order';
+              const orderBg = isOrderActive ? 'white' : '#1a1a1a';
+              const orderColor = isOrderActive ? '#1a1a1a' : 'white';
+              const orderShadow = isOrderActive ? '0 -4px 15px rgba(0, 0, 0, 0.08)' : '0 -4px 15px rgba(0, 0, 0, 0.15)';
+              const orderBorder = isOrderActive ? '1px solid #e5e7eb' : 'none';
+              const iconHtml = isOrderActive ? item.icon.replace('fill="white"', 'fill="#1a1a1a"') : item.icon;
+              return `
+                <button onclick="navigate('${item.id}')" class="nav-item-order" style="background-color: ${orderBg}; box-shadow: ${orderShadow}; border: ${orderBorder};">
+                  ${iconHtml}
+                  <span class="nav-item-label" style="color: ${orderColor}; font-weight: 600;">${item.label}</span>
+                </button>
+              `;
+            }
+            const isActive = state.currentScreen === item.id;
+            return `
+              <button onclick="navigate('${item.id}')" class="nav-item" style="color: ${isActive ? colors.primary : '#9ca3af'}">
+                ${item.icon}
+                <span class="nav-item-label" style="font-weight: ${isActive ? 500 : 400}">${item.label}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // ===== ACTIONS =====
+    function navigate(screen) {
+      state.currentScreen = screen;
+      state.headerOpacity = 0;
+      render();
+    }
+
+    function selectProduct(id) {
+      state.selectedProduct = db.products.find(p => p.id === id);
+      state.quantity = 1;
+      state.selectedSize = 'medium';
+      state.selectedMilk = 'full';
+      state.currentScreen = 'product';
+      render();
+    }
+
+    function updateQuantity(delta) {
+      state.quantity = Math.max(1, state.quantity + delta);
+      render();
+    }
+
+    function updateSize(size) {
+      state.selectedSize = size;
+      render();
+    }
+
+    function updateMilk(milk) {
+      state.selectedMilk = milk;
+      render();
+    }
+
+    function addToCart() {
+      if (state.selectedProduct) {
+        state.cart.push({
+          ...state.selectedProduct,
+          quantity: state.quantity,
+          size: state.selectedSize,
+          milk: state.selectedMilk,
+          price: state.selectedProduct.prices[state.selectedSize] * state.quantity
+        });
+        state.currentScreen = 'home';
+        state.quantity = 1;
+        state.selectedSize = 'medium';
+        state.selectedMilk = 'full';
+        render();
+      }
+    }
+
+    function selectStore(id) {
+      state.selectedStore = id;
+      state.currentScreen = 'storeDetail';
+      render();
+    }
+
+    function switchCategory(cat) {
+      state.selectedCategory = cat;
+      render();
+    }
+
+    function scrollToSubcategory(subId) {
+      const el = document.getElementById('sub_' + subId);
+      const scrollContainer = document.getElementById('orderScroll');
+      if (el && scrollContainer) {
+        const offset = el.offsetTop - 90;
+        scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
+      }
+    }
+
+    // ===== RENDER =====
+    function render() {
+      let content = '';
+      
+      switch (state.currentScreen) {
+        case 'home':
+          content = renderHomeScreen();
+          break;
+        case 'order':
+          content = renderOrderScreen();
+          break;
+        case 'product':
+          content = renderProductScreen();
+          break;
+        case 'scan':
+          content = renderScanScreen();
+          break;
+        case 'gift':
+          content = renderGiftScreen();
+          break;
+        case 'treats':
+          content = renderTreatsScreen();
+          break;
+        case 'stores':
+          content = renderStoresScreen();
+          break;
+        case 'storeDetail':
+          content = renderStoreDetailScreen();
+          break;
+        case 'settings':
+          content = renderSettingsScreen();
+          break;
+        case 'history':
+          content = renderHistoryScreen();
+          break;
+      }
+
+      const showNav = !['product', 'stores', 'storeDetail', 'settings', 'history'].includes(state.currentScreen);
+      
+      document.getElementById('app').innerHTML = `
+        ${content}
+        ${showNav ? renderBottomNav() : ''}
+      `;
+
+      // Fondu fluide du contenu header au scroll
+      if (state.currentScreen === 'home') {
+        const scrollEl = document.getElementById('homeScroll');
+        if (scrollEl) {
+          scrollEl.addEventListener('scroll', function(e) {
+            const scrollTop = e.target.scrollTop;
+            const fadeStart = 40;
+            const fadeEnd = 180;
+            const opacity = Math.max(0, 1 - Math.max(0, scrollTop - fadeStart) / (fadeEnd - fadeStart));
+            const headerContent = document.getElementById('headerContent');
+            if (headerContent) {
+              headerContent.style.opacity = opacity;
+              headerContent.style.transition = 'opacity 0.05s linear';
+            }
+          });
+        }
+      }
+    }
+
+    // ===== INIT =====
+    render();
+  </script>
+</body>
+</html>
