@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a1a">
+  <title>BEANZ Coffee</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      font-family: 'DM Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #1a1a1a;
+      min-height: 100vh;
+      min-height: 100dvh; /* Dynamic viewport height - s'adapte à la barre Safari/Chrome */
+      overflow: hidden;
+    }
+    
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      /* Safe area pour les encoches et barres de navigation */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+    
+    .app-container {
+      width: 100%;
+      max-width: 448px;
+      height: 100vh;
+      height: 100dvh; /* Dynamic viewport height */
+      max-height: 896px;
+      background-color: #f3f4f6;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    @media (max-width: 448px) {
+      .app-container {
+        max-height: 100dvh;
+        box-shadow: none;
+      }
+    }
+    
+    /* Barre de navigation fixe en bas avec safe area */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      border-top: 1px solid #f3f4f6;
+      display: flex;
+      align-items: flex-end;
+      height: calc(3.5rem + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 50;
+      overflow: visible;
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+    .nav-item-label {
+      font-size: 10px;
+      margin-top: 2px;
+    }
+    .nav-item-order {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 68px;
+      height: 72px;
+      border-radius: 14px 14px 0 0;
+      color: white;
+      align-self: flex-end;
+      cursor: pointer;
+      padding: 0;
+    }
+    
+    /* Padding pour le contenu scrollable */
+    .scroll-content {
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    }
+    
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app-container"></div>
+
+  <script>
+    // ===== DONNÉES =====
+    const db = {
+      user: {
+        name: "Yasser",
+        points: 0,
+        memberSince: "12/24",
+        eurBalance: 0.00,
+        freeCoffee: 0
+      },
+      products: [
+        // === FOOD ===
+        // Panini
+        { id: 101, name: "Mamma Mia", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 320, medium: 400, large: 480 }, description: "Panini généreux aux saveurs italiennes." },
+        { id: 102, name: "Ham & Cheese", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 300, medium: 380, large: 450 }, description: "Panini classique jambon fromage." },
+        { id: 103, name: "Thon", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 290, medium: 370, large: 440 }, description: "Panini au thon fondant." },
+        { id: 104, name: "French Cheese", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 340, medium: 420, large: 500 }, description: "Panini aux fromages français." },
+        { id: 105, name: "Chicken", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 310, medium: 390, large: 460 }, description: "Panini au poulet grillé." },
+        { id: 106, name: "Salmon", category: "food", subcategory: "Panini", image: "🥖", prices: { small: 6.00, medium: 7.00, large: 8.00 }, calories: { small: 280, medium: 360, large: 430 }, description: "Panini au saumon fumé." },
+        // Bagel
+        { id: 107, name: "Healthy Cheese", category: "food", subcategory: "Bagel", image: "🥯", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 280, medium: 350, large: 420 }, description: "Bagel fromage healthy." },
+        { id: 108, name: "Ham & Cheese", category: "food", subcategory: "Bagel", image: "🥯", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 300, medium: 380, large: 450 }, description: "Bagel jambon fromage." },
+        { id: 109, name: "Salmon & Cream", category: "food", subcategory: "Bagel", image: "🥯", prices: { small: 6.00, medium: 7.00, large: 8.00 }, calories: { small: 290, medium: 370, large: 440 }, description: "Bagel saumon cream cheese." },
+        // Wrap
+        { id: 110, name: "Chicken", category: "food", subcategory: "Wrap", image: "🌯", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 310, medium: 390, large: 460 }, description: "Wrap au poulet croustillant." },
+        // Sandwichs
+        { id: 111, name: "Healthy Cheese", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 260, medium: 330, large: 400 }, description: "Sandwich fromage healthy." },
+        { id: 112, name: "Mamma Mia", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 300, medium: 380, large: 450 }, description: "Sandwich italien généreux." },
+        { id: 113, name: "Ham & Cheese", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 290, medium: 370, large: 440 }, description: "Sandwich jambon fromage." },
+        { id: 114, name: "Thon", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 280, medium: 360, large: 430 }, description: "Sandwich au thon." },
+        { id: 115, name: "Frenchy", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 310, medium: 390, large: 460 }, description: "Sandwich à la française." },
+        { id: 116, name: "Fish & Cream", category: "food", subcategory: "Sandwichs", image: "🥪", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 270, medium: 350, large: 420 }, description: "Sandwich poisson cream cheese." },
+        // Toast
+        { id: 117, name: "Healthy Cheese", category: "food", subcategory: "Toast", image: "🍞", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 240, medium: 310, large: 380 }, description: "Toast fromage healthy." },
+        { id: 118, name: "Ham & Cheese", category: "food", subcategory: "Toast", image: "🍞", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 270, medium: 340, large: 410 }, description: "Toast jambon fromage." },
+        { id: 119, name: "Salmon & Cream", category: "food", subcategory: "Toast", image: "🍞", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 260, medium: 330, large: 400 }, description: "Toast saumon cream cheese." },
+
+        // === BOISSONS FROIDES ===
+        // Jus & Smoothie
+        { id: 201, name: "Orange", category: "cold", subcategory: "Jus & Smoothie", image: "🍊", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 110, medium: 150, large: 200 }, description: "Jus d'orange frais pressé." },
+        { id: 202, name: "Ananas", category: "cold", subcategory: "Jus & Smoothie", image: "🍍", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 120, medium: 160, large: 210 }, description: "Jus d'ananas tropical." },
+        { id: 203, name: "Mangue", category: "cold", subcategory: "Jus & Smoothie", image: "🥭", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 130, medium: 170, large: 220 }, description: "Jus de mangue onctueux." },
+        { id: 204, name: "Fraise", category: "cold", subcategory: "Jus & Smoothie", image: "🍓", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 100, medium: 140, large: 190 }, description: "Jus de fraise frais." },
+        { id: 205, name: "Fruits des bois", category: "cold", subcategory: "Jus & Smoothie", image: "🫐", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 120, medium: 160, large: 210 }, description: "Mix de fruits des bois." },
+        { id: 206, name: "Mangue Banane", category: "cold", subcategory: "Jus & Smoothie", image: "🥤", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 160, medium: 210, large: 270 }, description: "Smoothie mangue banane." },
+        { id: 207, name: "Fraise Ananas", category: "cold", subcategory: "Jus & Smoothie", image: "🥤", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 150, medium: 200, large: 260 }, description: "Smoothie fraise ananas." },
+        { id: 208, name: "Mangue Menthe", category: "cold", subcategory: "Jus & Smoothie", image: "🥤", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 140, medium: 190, large: 250 }, description: "Smoothie mangue menthe fraîche." },
+        { id: 209, name: "Mangue Fraise Banane", category: "cold", subcategory: "Jus & Smoothie", image: "🥤", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 180, medium: 230, large: 290 }, description: "Smoothie trio de fruits." },
+        // Mojitos
+        { id: 210, name: "Citron", category: "cold", subcategory: "Mojitos", image: "🍋", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 90, medium: 120, large: 160 }, description: "Mojito citron classique sans alcool." },
+        { id: 211, name: "Fraise", category: "cold", subcategory: "Mojitos", image: "🍓", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 100, medium: 130, large: 170 }, description: "Mojito fraise sans alcool." },
+        { id: 212, name: "Violette", category: "cold", subcategory: "Mojitos", image: "💜", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 95, medium: 125, large: 165 }, description: "Mojito violette sans alcool." },
+        // Iced Tea
+        { id: 213, name: "Lemon", category: "cold", subcategory: "Iced Tea", image: "🍋", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 80, medium: 110, large: 150 }, description: "Thé glacé au citron." },
+        { id: 214, name: "Spicy Peach", category: "cold", subcategory: "Iced Tea", image: "🍑", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 85, medium: 115, large: 155 }, description: "Thé glacé pêche épicé." },
+        { id: 215, name: "Coco-Mango", category: "cold", subcategory: "Iced Tea", image: "🥥", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 90, medium: 120, large: 160 }, description: "Thé glacé coco mangue." },
+        // Milkshake
+        { id: 216, name: "Bueno", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 320, medium: 420, large: 520 }, description: "Milkshake Kinder Bueno." },
+        { id: 217, name: "M&M'S", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 340, medium: 440, large: 540 }, description: "Milkshake M&M's." },
+        { id: 218, name: "Oreo", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 330, medium: 430, large: 530 }, description: "Milkshake Oreo." },
+        { id: 219, name: "Ferrero Rocher", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 5.50, medium: 6.50, large: 7.50 }, calories: { small: 350, medium: 450, large: 550 }, description: "Milkshake Ferrero Rocher." },
+        { id: 220, name: "Cookies", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 310, medium: 410, large: 510 }, description: "Milkshake cookies." },
+        { id: 221, name: "Brownies", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCADIAJUDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD06igUUAJRQaKAENIaU0hpoBtFFFMBCKaafTDQAxutNxzTm60UwCmtT8VGwoAZ3oNHeikAlFHaimAoopuaKANMUUCioAQ0UtIaAENIacabQgEpKWg1QCUwmnmuf1jxJBpkksMkTK+zMMj42SN6DBzRdIaVzbPWgVh2viW2lvLWxljZbqYfOEO5Y+OCT7/pW9ihNPYGrCGo2qQ9KYaYiI8D60i5xzSnlqXtQAlIadTaAEooooA0xRQKKgApKU0lABTacao6wLn+ybr7FIsc4jJRm4A/w+tAGX4j8S2+ko0MREl0RgDqE+v+FcHY69qNrqx1CSZpWLfMC/DKeoIqhKWkZnlLO7dSDnmq12whiLtuBx0rFybZ0qKij0//AISa11CSO2si+JotxlDD5eDlQP7wrkrJIr3XZYtXvjJb2vzxgnKqWP8AQ49uKzI7waDBE0EG6SeNnLuQeOmR+VQ2kep6tfMbeKZvOO1yi8DI61TbZmkkb661NcXs8Wi2cbzq3z3DID8oIB6fSu7055ltIFulUSuCTtfcB+PvXKNYNBqCvp08kcMCF3WIAKZMcZ9T6+1XNMuWFy1xdyoba0kGBkgxbl53fQnA9aUXZhJXR1ZqGQ44qO11C0vYnks50mVG2MVPQ048mtzIQUo6UooxTASmmn4pCKAG4opcUUAaIooFIagAooooAQ9K878YeJVvJDYWshFqjYkcH/XH0HsD+dehtg8EZFeX+MPDDaXO93aKTYytkbf+WBPY+2elTK9tC4WvqYbTMoYqcZ4bHf2qCVx8jsglGflX36Z/WpH2ohww3dTmonjuYkY3Nv5fmZ2FhtyMcYHpWCOhtWsaz6bAsNvbF4byST95iMk7Rk5Gewz1rprGwhPhe28mWaGMIGmiVzGWP8QJ9MiuV8NTzxX0JhCeY7+UN6BgR1YfkMfjXb32oSXkN1a6da7ooxsnuFb5Yxj5gB1ZgOgFWZMzLnxO1rLEQI0tLlQIEMeRt6GQ8ggenriqUxudc1N7W2+y3cUcZDyMrRqg7EHOW57dBXJz3CTXBlVGC9FRj/q1HAAPfjr71Z0W9vra/ij05m82Q7EUHhsnoaLD0Or8E2Fxp9zKblGSSUlQvOAF/wDr5/Cu3AwPrWfbvLHdBJk3K2BuUZwcc5PpWk3WtobGMtxtFFLViAU006mmgBKKKKANCiiioAKKKDQA3vTJYo5o2jlRXjYYZWGQR7inmkpgecax4NaLVFCuf7Olbh1wXi6nGD1+vpVu80bT4Eht5Fa6to1AG5vnQeoP9K7iYAxN8objoRXHXcqrPsx3PA7c1EolqTKmoNpWiNYx2cDTGfeyEMNwbhQPXJyB9K39FsTaaWDIUMryM8nl/wALE9AfbgVzb2cN/qNm7u8X2aUtwh+bHaugjv7eAeXJvIBxkBiM1noU7syNV8GWty8kkPm28jEtkYKEnvjt+FUNK8N6jpH2rUWtoZbi3ANshfIds/e98DoK6631C0uSdjMSOo5pZJY5N0YhJx3PT+dFw1ILW71d9JiZraCLUi2TC5+V09ePunHr6VsmsrTJGmnwu1RGSCBzkela1bQ2IluJijtS0VZImKbindaQ0AJRQRmigC/RRRUAFIaKQ0wCkoqOaWOJd0jqg9WOKYEV4rPbSBH2NjIbGcGvNNYl/fkhg0isQxBIxzXa6jq8BV0ilVsA4weDXFXduHQFM8E7SO4PPP4nrWc2rGkNzOS8kt3aSNTuBzkHnPrV1dRa9dJnhKOuMkE/MfeqgglLEbCMcA54NTxQtuGQ2RwQpFYM3RqtOFiwsm0ydTg8ew9Ke+oTyxhGHzAgGYNg4qOWxtpLMK0F2wb+MbRj9KpC2ni+VN3+yGX5qHohKzZ0mgLNPcKPOCLHyQOciupxXB6NdeRPujbawPINdxBKJ4VkHGeo9DW9J6WMai1JMUhFOpGrUzGdKKD1pKAFooooAvUUUVACUhpSabTQEUzkYSP7x7+lQvYwyxkXKCQN1385p8OGmkkbpnj6CplYuATxnnHpTA8t1BHN4bZMKqTMFCrgbc4FPF2AiW7EYUY/Wt7WYlku1uCvzwuy574zkVwN/cmK/wB27hmJI/GsJxNoPU3kkTIDDaPY1fjv7S3AZLRTIvG8tkmsKJtyg5Bz0qC4u8qRBKpZGwy9z7VkrmzSOiutauJYisMUS56bqqRajdSQD7YYzICcFRxisWeW5TTOFJlc4GB90Vlx3DMFSVmRAc4Geo9qerQrRTOotSwk8yQBGZBlR65613HhmVpbF9xyFfA/KuFgwVjmRw4YYBYYrt/ChY6YxKlTv6H6VVJ3kTVVom5SNSmkPSuo5hhptONNoAWiiigC9RRRUANNITgE+lKaZLxE/wDummBDAv8Ao5HcjB/GpqjgP7sU/vTA5nUG23rkj5WBz9c15dqu5tRm2ruUMxxjoM16TrbkSSAdMH881ws0LK0qswG9ju+lZzNIFWzuS1q0e8qV6NVOSYfaW8lMZPAJqN0Mchj3hlPOQeDWjYxrcvjaowOcCsdFqb6vYfpCs0ziRi6MB9O9M1LJu2WOM4XHJHerc0hsJPkVdrY2jHSobjUJ2UgBR2+4M0JO90DaSsx1tcNPbrbyERpEwcnpnHOBXpnhIu2lO0gAbzWzivKXVkkU5yM5yen0r1TwaxfQlduS0jEn8q0pr3jOo/dN00lBpOlbmAjU09KcaaRQAUUlFAFwmkJxTCwpCwpAOLUyQ5Rh6g00vTS5xTAjgkzEDmpd5PTNUowyB07qf07GhrplQ5jJYdl70Ac5rT/vSv8Atn+dchebz5uFzwcHNbOuao0s8YWN4/nwQ64OSay5zucqRg4xWE2bQOet7dpwdrjK/wAOOa2dFhCwtL1ZvlFVbuDy0+0wsV3fK4FWdGEnlyEcKTwT0rOTurmkdHYvS24uE3McMG4wfSo7ax+VpLoBmPb0qwSEAA4AFVjcSiRSzIoY8qfSpV7FO17kksIktjCyjGcqwPQ/Su98JAR6FGqHKh259a4qFFMiuyKcYOD39jXceHI1h0aJFJ2hmxn61rR3MqxrbjSbiaaTRmugwF3GkLGkpKAHbqKZmigCYmmk0maMg0AITTd1MubiG1t5Li4kCRRjczHsK5O88VNNctFYMscYVSruvLZ69emD2qZSS3KUW9jrG5IbkEdDTZZPkO2JC/bJwM157NrV5Zyy3K3bGdhnbuyrccZHSt7wz4gbWYZlmTbLCASwHDD1PYVKmmOUGjndcsrqG93XAXfJL5nysSFOc8VQlfN5Jk5wfzrrdcVLyJjHIjSR/wB1ga4+dCs5dTkHr7Gomi4Mg1Risce043k59+lWdPnU2KrFgyJ1Un3pZoIbi3BmbaE5DA9KisWt4/8Aj3DFiuWb8elZ9DXW5qEAj5uvp6VBJDG8ivuOU6+/tSCQt9aDlRkkA9MVCuU7EscuJAe2a9B0P/kEQ59/51wOm2U19drHEPlz8zHoort72+tND0rzpmPlxAKoHVz2A9zW9JW1ZjVd9Ea2eKTNec3Xja8ku/MtpVhiA4hwDn65HJ+lXh40vBDGRZws+fm+Y8j29DV+0iZ+zkdvmgmqGlakmpWQnRCjA7XQ/wAJq5mrTT1RLVtB2aKbmimIdmjNRsW2/JjPvTs8UAYHjW4WLw5cLKrlZCqjY23knj8PavLxLtQowDE9sV7PcpHPbNHcIjqwwykZFeW6rBpw1CX7NGUTcQqqxxjPX2rOaNIMwpZmB2gbQOwNatjOltoc/lzkXF5II2jXI2xrySfqcD6A1tWfhi3vNNjurd1UMWDlxuPHGFHb6msK90+4068ZbkZLHcCf4gKl6Ia1ZWNw8FzmNgsnYqav2LXOoXSW8SgzvnGOhx1J9KzBC07kxKzuBkhQSfrxXUeF9Hu2vI75nMGxhwchmXPOB6Hpk+9JIbZHNoOosmx7dsHrtIP9ajHhy8j+ZVmBHon/ANevQiqTJuCEE5wGGKRkEakALkjgetXyojmZ5wsaw3O2d5gFzuwAMY/OtwaLDc2YvbINdccRmXkn8gKbrqWdpdkW8R85wWk2yEYHbA6ZzzWXDq17bjfbyiKBs5UD7/0xWN1GVmbcrkro6vw5BeQ6aftsKxTb2wuMYXtWD46vne2itixH7zdjHUAdf1o1LXNSvNNaKCJEQgJKOSxU9eSeKyra3hS6Q6s4S0xubcckj2A571pzJrQz5WnqYCzOvPp0yKvWFyWLLtGcfLj/AD71efS7K/1JotOlZbQLuEsgJPHXAxz9OtV7ezhiu3jWUTFW2hl+UHnrg0mkNNo9B8DgDRZD5ZDGdssSTv4GP8K6PNcn4V1Z5J/7OYgoiEp8oXoegx1rqc571pHYzluPopuaKokTNGaSloAQjdweR6VgN4T083Mkzq772J2lsAe3FdBRSauNOxn6bZraRSQxWwgjVzsG7dv/ANr2+lM1XR7XVYhHcx42j5XQ4Kn/AArT+lFFguYNro9vpFvI1lbl3wSf77n0zU2km6ntzNfWyW8zN91Tk7e2f1rWxSYosFyNVIJ6+1Nkj8wFSzc9eamxSMOnJ654NMRxdzoF+91PuUXEch++rgEc5IP6U6Hw7NJKXumjgj6bVO4ge3YV2JAUE4AHU4FAUHqOnesvZRvc19rK1ijY6dDY27Rwx7h97DHlj7msy+8M2Wo3H72JkTbuAjAGD0xkV0LLkAAZwR3xSlVIPHXg+9XZEXZg6N4eh09Q24SyKSUZhjHpx7VZuPD2n3D+bLboJc5DplW/EjrWtSgenAp2QXZUs9OtLIYtoEQ9zjk/jVwDiip/IYQ7+M+me1AiIUUmKKYWEo5oooELijFFFABtNLtoooGG2jb2oooCwbKNntRRQAeWaPLoooAPLo8s0UUAHl0uyiigA2Gl+bZt7ZziiigA20UUUDP/2Q==", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 340, medium: 440, large: 540 }, description: "Milkshake brownies." },
+        { id: 222, name: "Snickers", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 350, medium: 450, large: 550 }, description: "Milkshake Snickers." },
+        { id: 223, name: "Speculoos", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 5.00, medium: 6.00, large: 7.00 }, calories: { small: 300, medium: 400, large: 500 }, description: "Milkshake spéculoos." },
+        { id: 224, name: "Caramel", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCADIAJUDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD06iiigBKKKKAENJSmkNMBpopaSmAmKaafTDQAxutNxzTm60Ac0wCmtT8YpjUAR96U9Kb3paQCUZoxRTAWikzRQBpCiiioADSUtIaAENITTjUE0qpxn5j+lF7ASUVmf2pbszLGpdlOCd2OfrUou5kwzx5j/iAHzIPX3qPaxL5GXTUZNKZI/L8zeNgGd2eMetc6NcuI53uJoX+ySHEOcDj19cmqlUjC1+oowctjoDQKyH11PPKR28hVP9ZkYK/StdDvRWwRkZweopxqRlswcXHcWo3qQ9KjNWSRngH3pFzjmhvmNOA4oASkNOptACc0UpooA0RS0UVABSUGigCtf3QtbdnPLdFX1NYEdlcaxIZL2dlSM8pHwD7fhVrU2nnvhHHt2xcjIzlv/rD+dPF1FY6Q93Ic7U6Djc3TH51yyfPOz2RvFcsbrdiLpcEO4R7geAnzcHjuO9IHbDWzyOGyQrKAAR75rl18SahfSSTxSeUpYKsadB+dWbnXPN0vZdRuJMY8xVwMjoay5ofZVjTkn1NCC+ee5jtZH2pGpUhfuy+xHsKgVobm+uYZNywRHc3P32B4OPaua86W1lkhSaXzJE3AkEc+x/GtDT4J7Ble68xC3zI3X60r3WpXLZ6Gmbp31cpp0seJVyWK8A47j2rf02a4w8d0AuGwhLct+FUtKs4Wj+1bVRn3AhVxnnr7VTmvW04z38sTOyT7AqnG4YPJ/Cqpy5Gm+pE1zaLodOaikPaodOvlv9NivAmzzB93OcHOKkPJr0E7q6OZq2ggHFKOlLjmjFMQmKQ06kIoASijFFAGiKKBSVABRRRQBiyMI9XCOOGXzB34I5/UVzfiSWSK4gso2HkysZNo5z2/xrrdRt45dgkIRlz5Ug6oeted+IRImrtEZWzDwGzng88Vx1VY6qWrKFiGtZGEoIiZjvz1U5xwKsarLeXfkpCvOPkA4DY781H5+YPJY5jXnLevfJ6/hUNrPO24RgMePKyDzg8gHtWa3ubM6iJbmeytbXU4t7KfmmVecen/ANetR0S3sw8M2VI5hmGc1jWl7LDZLcyqwzjG45IPofUVrW9tcXNzFe3m2KMcrGqnAHrS5m211M2rJPoTWdzemKOO3iQrjHGCqH0qea1EkewAN5alpoF48wmqWr376PcQQWuzM25iNuRj+9j1zVnRruW8gmmkEKTE7A44Ljr0pqNnZsTbtzINKuJ95tp08tEJ8lQBwo9xWqBx9ap20Li8Z3A2kAZHc96vGu6i3y6nPPcTvRR3pa1IEpDTqaaAEopaKAL9FFFQAUUUhoAa6qwIYAg+tYmseG7PVQpbMMyDAdAOR71uZpD1pOKluNSa1R5zfeHZrC8hQgzW7N8zFdufUYzVyz06LTXX7XDDNbE/KVBDRg+nqK7acAxnKqxHIz2rj79/3rBx8oY4HpzWTpqJr7Ry3E10WzizislBVyD8p4x0xW/EM22Y3DhPlZf6VyaeU13bspKruzyK6KGVIVCZJGeoY1hH45GkvhSGX2nw6sIw/mrsUoGQZIHpUtvp8VjpwtoWViM4LgdT6+lTHacFGIweRk4NQ3u02sgVPmK8GraSTZCb0RNDN5+mI0LAXDrlR15Hr+VW4TI0KGZQshA3AHIBrK0RZPLiBG3ZnqOSM1sVtQXupkVN2gopaK3MxMUhHNLSGgBDRRjNFAF+iiioAKQ0ZpDQAlFFRyypEuZHVR6k4qgIr1TJbOFfYcZBxnFcHfOTI6kq4JIbk8810+oaxbfvI45lbC9j68VzktoSud3JOenUVhVfY2pooxSNFcIoLbVOVHXBroLW/wAwr5kLMemc/rWRDZssu/AYj3q/FGwP3SPfNceqbaN3ZpGjb3BQlRkg8jPapZbl2Qjy/bJqutpE6Bt8pKnIwtGJTx0FUm0iLJk1gs8t0pMpQA7iMcmtvFYNtvhl3huRW3FIJYw69/0rsoyTVjGotR4FIwp1BrYzI+hopT1pKACiiigC9RRRUAJSGlJpKYEMzkYRPvHv6VC9jFLGftCCQHru5p8OGmkkbpnj6CplYuqseMjOKYHm9wG+1vartVRMdm1cfKD/AI1p282V8tz0NWNYiV7qSfADxMwB9RWDHcEyFuBk8AnrXHP3Tpj7x0MaJnIq1GYE5ZNxrHt7lSPmJUjqDSy3qp0OfeudzS1NORs3PtwCkLGoqNp1fkqAfaueN+z8BwPpUkN2ysAeU9Kh17j9i0be5SKv6Y26OQdgwrDd5JEBt2X3zWroDySW0hkUqwfHP0rpw8rzsY1I+7c1aRqU0h6V3nOMNNpxptAC0UUUAXqKKKgBKaxwCfSlpk3ET/7ppgQwD/RsdyMH8an4FQwH92KkpgcxqY3XcgPRga4vy2e4kQuVwcKRXY6y+JnI9SK40ttuGzkHNcVc66JpC2ucqiS7lI6kdKli0yRpM3EwKDsveoYbl04GcmrapIBmeTbnsBmuLS+x0ak/2G0kG1QAR3U81nurwXBhkOcdD6iryXSbhGAFX9RVa9m894kCZkBxx3pS5WgjzJ6kkcjJ9wk11WgAiycsckv/AEriwzROUlYqQefau00Bw+nbl+7vIH6V0YNe+Y4n4TTNJmlNNr1DiENJTjTTQAlFFFAFomkJpm6k3CkA/dTJDmNh6g00vzTS5xTAihkzGDmpd5PAzVJAUDoOqn9Oxoa6ZUP7slh/d70gMHWG+eQnoX/rXP38OR56j5kPPuKt6vqTTMAsbIN3KMMEHdz/ADNMkOUkGP4TXHWaaZ1U7pobb3SMittXcB1xVlBPdgsgAXsWPWsWEkyLGo5Y4rqYkEcSqOiiuNRvudEny7GQ/mwTbZFwfUdDT4JBFcmZsHC8VLq8b7VnQkhfvD2qgjGVljXq5xUOPK9Ck+ZGjaWaXge5uMkuTgA4xXT+HVMOmmP+7KwH0rLhQRRKi9AMVtaUMWf1cmu7CxszkrSui9uNJuNJmkJruOYUuaQsaSkoAXdRTc0UASk0hNJmjNADSaQmnYBprLmgBjckEcEdDTJX+Q7Y0L9snAzTyhzjP4VFIjAUAcNqNjcW95I0uzLyGQleQDkUsrfJKfY1ta0nmRlj95B+lc/I6vHIQfvKeK46sbLQ6abu0Q6Ivmahub+BSRXTZwMVzOhusd6d+BuXAroS4IyDXP0Np7hdYa2kU90NYOjOHvRz90ZrYmbfC6jqVIFY+lWzQXBlZhhcgjNS9WOOkWdMjZrb03ixX3J/nXOWjNPMI4uT3PYCuliURxqi9FGBXZh4tanLVfQsZ4pKi3jONwz6ZpcmukysPzSE03NGaYh1FNz7UUAPzRmoyxx8uM+9LmgBzOFGT0rk73xNdfaZrcRPB5ecFRyR2Oa6dm+T5gMjkiuQ1CS0ur37XJEybCV3KeSB+n4VhXlZb2NaSu9iidTuZJg9q0yytkFh8zGuivNbe00NHeSM3owpUc/mPpVGHSE8qS90+5yz52E9BntXM3UN3byPHd5Zy2fYisVzQTfc292TSOrstVtdaiaOYLbyKuW3OMH6ZrMvfDd0HMtnKrRnoM/1rJsbZPOBnDMvdVGeK1dPguYLxfsnmJk524OCufT0oVVvdXB00nozPOh6jvyYXGO6kH+tX47XUdoBjmOO/l//AF661lRyQFOQM8jA/Oo52itYGlkO1FGSQM1s6cTLnZzUdvcSSGAmQS9dpKqcVdh0CJQC4YE9cuWz/KoNRvILS5zZ7EmcbjJz39j0qrFe3aYdrhypOQC24E1g6kIOzRqoSkrpm015Z6Pth2s0hXcFHp7miHxDvchoNq9iGya5PWJLia7iud2VwFzjgHuPrVppXydgO0DPHpSnWkn7uw40otaleXVbhrlzdAs+eSetdF4fvne4gzI5SQldpYkdKzBpltdmMPO0c7gF1xuwOx46cdc1rWVvbaIqyXEwk+bbHtXuevFTBSupFTcbWtqdMDRmqy3HmCJokZkk/i6ACpufWu9O5x2H5opoPFFMQmaM0lLTEIQGBDcg1lnQ7PcC0SuQSfmyeSc1q0VLinuUm0VrWIxo0flCNFOEAOQR6+1QajpcF+oWZMFeVdeoP+FaFFHKrWC7vcy1shaREwxl2RSFHc+1OtFeeLzJ4FinwVyRk4/w9q0MUmKXL2HcpWFtPbRsk0wlGcr8uMVNND5oxuIOc1PjFIwBx7HNCikrIG7u5x+p+H7lpme1dZ1ycjdhgfSl03R7l41juVaFVPVuuPQV1pVVycADqcCgL1yKydCLdzRVpJWM/wApZkls1jkiVFUb8DDewB/nVZrOeRC62axLHzHGGCliPXHetkoMg7QacQCpUgEHrmm6VyVOxiwaXDcJK674pGIJ3HLe4I7Zq8mnqIDFJHHL0IMmWJPvV7FHHbinGlGIObYiqqqEwNo6Cn4pKm8hhDvyM+me1aEEYopKKYCUUUUAFLiiigAwaXFFFABto29qKKADZRsoooATZS+XRRQAnl0oSiigA2UuyiigA2UvzbNueM5xRRQAmKKKKAP/2Q==", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 290, medium: 390, large: 490 }, description: "Milkshake caramel." },
+        { id: 225, name: "Café", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA0JCgsKCA0LCgsODg0PEyAVExISEyccHhcgLikxMC4pLSwzOko+MzZGNywtQFdBRkxOUlNSMj5aYVpQYEpRUk//2wBDAQ4ODhMREyYVFSZPNS01T09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0//wAARCADIAJUDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD04UUCigBO9FKaSgApMUtIaAGmkpT1oqgCmmnU00ARv1ptOfrSAc0wFApGp2KY1ADDSGjvSmkA2ilpKAHdqKSimBoCigUVAAaSlNIaACkNLSGgBO9GKKKYCU0041DJNHG6o7qrNkgE+lMBT1oFIkkcqK0ciurDKlTnP0p1MBaiapT0qM8DNAETcHApaQcnNLQAGm040mKAEopTRQBoCiiioADSUppKACkNLRQA09KKDTXYIjM3RRk0wILu6jt9isfnkOFH9a5jWp1ll+xFCEmlDyOcEqMjJHpzj9aXUtRuJl+1rtRgGSBEG5iOCf5VlpPKGY6qzK5X9zOq53e3A6/WuapO+hvCFtS5c39ppV+8MEXn3DqDEIeQp6dewzziuttJXntY5JE2SMoLL6GuQ0vTHWOG+VFDsdzqoGHGcfgff+dbulXEkjNPKJQsjeWseM7cHqf5UUZ2fqFSP4Gv2qKQ9qkZsCohyc11mAnSlHSiloASkNONIaAGmig0UAaAooFJUAFFFFABSUtIaAENcxrGtZu5rKMSAR43Y43Ct6+naC3LJ989OOlcHObrVLlp9IEdxsbZOAcHPXP096yqyaVka0op6sv6dbNFBDIrLcRpndHn7jE5yPfpV24isr23lSZRGuMsH6H/AANZd4j6fbrJaO8bRnadx5I64PrWpa3lwbaGS5slcSfeER3MoPfHpXOpbxe5rKP2kLYLfRW0RSRZodoxHIMkDPGHHI49QaLKa4kFxepPJHFE5HlYB6DvSX+oW5SJbB1aZ+EAblR6exqaKwu1Z5BdRYIz5PlDYT7/AP1qE22ktbBaybelzUjnFxGkq5AZQQPSpcYAqraB8FmXEYGQOpB9KtGu6Lujme4lLR0NAqhC0006mmgBDRQaKAL1FFFQAUUUUAFNNLSE0wKOqrN5SPAm4q2SPasO4MNjMlzYJGhb/WIgA3CukuWIhcqMnHSuJuZ1jcbhnLY/Womi4ljxHdxzWSJCgLzEAHPzY75HrWxp8atYqgxvRAHQjviuTvw9wY0gQ71cHJ4rfiuoYEJJYx9SwDfyrnS99tmz+BJDxpMcesR3yoylW3YCghjjqfStSSMMSdww2OQelVIrqCVcoXOBkdaY8iMpAjGQepqkorYzbk9yeFjbS+Ukm5ZHLMpySv0PpntV/rWVYSPLeAbkXaTkKOtaoremrLQiW4GilNFaEhikNGaCaAGmig0UAXqKKKgApDS5pKACkNGainnihXMsiIPVjimBBqEbSWjhJPLYDKtjODXmV+26R13KxDHkZHOe2a7LVNct2Z4opQxX0PFcjdWwwCqjnP41nNo1giq1/PvSRSRIno3H1NX11R7uNP3TRN0yDx+VZ32Zs/dqaCFkb5lOO+K52bI1PtREIjjmcMTyee3bFWrq5kuIwfLCFMZOSC1VFitxFlbectjk5FV9sjcZIHuaTA3tCE13dh/NVAvLBRya6kCuH0uZ7ScOr4NdrbTLcQLKvRuvsa6qTVrGFRakmKQ06kNamYzvRQetJQAtFFFAF2gUUVACUhpTSUwIJpG3eXH949T6VDNYQSREXEauGHO4ZqS3PMszdyT+FTAk4LdaAPKJEkN40RG3bKwQAY4zVrzwRtbqOK3NThVr55yBvRmArlJGJmY+5rCasdEXc0AyE1ahubaFs+UGPqayI2OKkB71hexpa5sNrDEYSJFFVmut5OVFUcmnj1/OhybBRSLSSDOeldb4bctp756B+Pyri0PPtXZeGP8AkGsf+mn9BWtD4jOrsbFIaU0Gus5xhptOPWm0AFFLRQBdoooqAENMc4Rj6A0481HPxA59jTQEcS/6Nt9cCpc1HGf3YFOpgcxqqbZJW6jJP5muLm4nb6muw1WYmSZP9oiuPm/1rfWsKhtTHocipB0qNKeK5zoHjpTwfUVHTgaQEqYz2rtPDQxpf1c/yFcVFy1dv4cGNKX3c1vQ+Ixq7GpRRTSa6jnEakpzcim4oAQmig0UgLZNN3U0kUhYCiwDt1RzEtE/+6aC9Rs9MCOKT90Oe9P3k9M1UjDKGXnKH/8AUaa106oT5RLAdB3pDOf1Rj58p/2m/nXMy8yH61o6pqbTXvyRvGvIZXXByTnNZz/f5GDXPN3NoIclSioo6kFYGyHdBS02lBoGTRH5q7fQTjS48d2NcRD1ruNDGNKi/H+db0NzCtsaBY00saCc0ldJgLuNJuNFJQAu40UlFADyaQk0maM0ANOR3phPNSEZphjzQBG3LBl4YdDTZnJjOyKMvjjcSBn8KkMTVBLG4GaQzz++sbm11FzMEDSSFjtORyc8VXlJDnPNdPrMe/8AekfMv8q5qdcvkHisJqxtF3FQ8U/NRrwKXcD3rA1JCaAai3ZbApyjkc0hluE/Niu40bjSoAfQ/wAzXG6dbPdThIhn1bsPeu3gRYoUjT7qDArooprUwqu+hZ7UZqHJ9aXJ9a3MrEmaM8UzcRRuoEOopu6igBc0ZpmaWmA7dRurOuNa0y2ufs897EkvdSTx9T0FJqurW2l6cb2Yl4+NuzncT0wf60rodmWr3ULWxjEl3MsSnpnq30Heqlhren6pK8VpKWdBuKshU49RXLHVrXxNfQ2N/Y+WrZMcscuSnHf2rd0bTLLT45H05lkJ4Zg+4nHbNSpXehXLZal+8s47hCp4PrXK6h4Zud5ezmUjujd6qX1z4nvNWaJPtEBRj5YT5UA7Env+Ndrb5NtGJW3yKgDtjG445NLSQ9UcC+kaqpwYD+DKf60v9laltBWGQn/dH+NdRqut2On3kdq6mSVsF9v/ACzU9z/hWMdN119VWRLl5bNpw+5ZcDAPp6Y/OocYlKTIIdGvZBl0dPxUVpxeHkyruXxjBBbPP5Cr+sfbm0uQ6fEUuGXpkbl+nvWL4V0/UbW6a6vWlhgClSksn3ifqafKl0FdtbnTWFpHartjXArQU4+lYt/eNLIdP0+9hjvs8xk/N06DggGqNleDRlubnWb6SSWR1jKYLZIz07d+3AquboTY1NQ8Sabp12LW5kk8zAJ2IWC59avWV/a38PnWcyyoDgkdj6EVzYsdH8SO9yC/nDqFyrBe2fWrM1/p3ha1jtERmeRt2wHkjOCxP0oT69AsU/EV54kt9S3WXm/ZuNghQMPfPHNdLpUt3LpsD6gqLclcuE6D/wCvWN/xNbnU1vNO1SGfT3PMbDhfUDiuhUDtxTXcGPoooqiAoPIxSUtAHIan4QN1evNBdNGkjbnQrnnvXQWunwR6XHp7wq8EaBdrjdn61eopJJFXbOc1vQpHsGi0lYYCT8wChdw9M1iWNyPColFxie9nUfu1bCoozgk13xrJ1Lw/p+oyrNPDmRe4YjNJx6oal0Zn2WpHxDpk0JxZzsfLRg33zjJ29+P61Z0bSLjTpbi4uLl7maYDOWJHH171fttPt7dI1jhjURfcAX7v0q5Ql3Bvscza+GoLj7Tc3sMq3U7EgzOJCuenTAP09qsyQXFqy2MNuqWSxAvKIwd7bgCu0eozzjitt1DKVYZBGCKbHGkUaxxqFVeAB2o5QuULMXrKHubeOFMY8hTllI4B3ZwRim3Z0+W+itriNZLlSGiDxMR68HGK08ClosI5rUdAE8bzac62l24/fYJIYHkjPX/9VQaJpEsyzQavMt3Bw/lSI+Qx6EMwBHA6V0yRzLPIzyIY2xsRUwR9TnmpqOXqO5hwaWml3MIsLSPymJMsrSNuUZyqgZ9fwrjfE1613qzfaLSONosKDgguB3616dgdcc9M1DNaW8+PNhjfH95QaTiCkZnhidrrQo2W2FsEyiLksDj+L1xk1soG8td5BbHJUYBNCRqihUAAHQCp/KIj3cfnTWgmyOinYoqgG0UUUAGKWiigQYoxRRQAYoxRRQMTbSbaKKADZRtoooAXZRsoooAUJQFoooELtpecY7UUUhi0UUUwP//Z", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 270, medium: 370, large: 470 }, description: "Milkshake café." },
+        { id: 226, name: "Vanille", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 260, medium: 360, large: 460 }, description: "Milkshake vanille." },
+        { id: 227, name: "Fraise", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 250, medium: 350, large: 450 }, description: "Milkshake fraise." },
+        { id: 228, name: "Banane", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 260, medium: 360, large: 460 }, description: "Milkshake banane." },
+        { id: 229, name: "Royal", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 6.00, medium: 7.00, large: 8.00 }, calories: { small: 380, medium: 480, large: 580 }, description: "Milkshake Royal premium." },
+        { id: 230, name: "Sahari", category: "cold", subcategory: "Milkshake", image: "data:image/jpeg;base64,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", prices: { small: 6.00, medium: 7.00, large: 8.00 }, calories: { small: 360, medium: 460, large: 560 }, description: "Milkshake Sahari exotique." },
+
+        // === BOISSONS CHAUDES ===
+        // Cafés
+        { id: 301, name: "Expresso", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 2.20, medium: 2.80, large: 3.40 }, calories: { small: 5, medium: 5, large: 10 }, description: "Expresso court et intense." },
+        { id: 302, name: "Black Coffee", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 2.50, medium: 3.20, large: 3.80 }, calories: { small: 5, medium: 5, large: 10 }, description: "Café noir allongé." },
+        { id: 303, name: "Americano", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 2.80, medium: 3.50, large: 4.20 }, calories: { small: 5, medium: 10, large: 15 }, description: "Espresso allongé à l'eau chaude." },
+        { id: 304, name: "Cortado", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 3.00, medium: 3.70, large: 4.40 }, calories: { small: 40, medium: 60, large: 80 }, description: "Espresso coupé d'un nuage de lait." },
+        { id: 305, name: "Flat White", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 3.90, medium: 4.90, large: 5.90 }, calories: { small: 140, medium: 180, large: 230 }, description: "Double espresso, lait micro-moussé." },
+        { id: 306, name: "Cappuccino", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 120, medium: 160, large: 200 }, description: "Espresso surmonté de mousse de lait." },
+        { id: 307, name: "Cafe Latte", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 3.80, medium: 4.80, large: 5.80 }, calories: { small: 150, medium: 200, large: 260 }, description: "Espresso et lait chaud crémeux." },
+        { id: 308, name: "Chocolat Chaud", category: "hot", subcategory: "Cafés", image: "🍫", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 200, medium: 270, large: 350 }, description: "Chocolat chaud onctueux." },
+        { id: 309, name: "Café Mocha", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 4.20, medium: 5.20, large: 6.20 }, calories: { small: 220, medium: 290, large: 380 }, description: "Alliance café et chocolat." },
+        { id: 310, name: "Café Mocha Blanc", category: "hot", subcategory: "Cafés", image: "☕", prices: { small: 4.20, medium: 5.20, large: 6.20 }, calories: { small: 230, medium: 300, large: 390 }, description: "Mocha au chocolat blanc." },
+        // Thés
+        { id: 311, name: "English Tea", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 2.50, medium: 3.20, large: 3.80 }, calories: { small: 2, medium: 2, large: 5 }, description: "Thé anglais classique." },
+        { id: 312, name: "Menthe", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 2.50, medium: 3.20, large: 3.80 }, calories: { small: 2, medium: 2, large: 5 }, description: "Thé à la menthe fraîche." },
+        { id: 313, name: "Menthe Gingembre", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 3.00, medium: 3.70, large: 4.40 }, calories: { small: 5, medium: 5, large: 10 }, description: "Thé menthe et gingembre." },
+        { id: 314, name: "Menthe Citron", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 3.00, medium: 3.70, large: 4.40 }, calories: { small: 5, medium: 5, large: 10 }, description: "Thé menthe et citron." },
+        { id: 315, name: "Menthe Gingembre & Citron", category: "hot", subcategory: "Thés", image: "🍵", prices: { small: 3.20, medium: 3.90, large: 4.60 }, calories: { small: 5, medium: 8, large: 10 }, description: "Thé menthe gingembre citron." },
+        // Chai Latte
+        { id: 316, name: "Épicé", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 160, medium: 210, large: 270 }, description: "Chai latte aux épices." },
+        { id: 317, name: "Noisette", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 170, medium: 220, large: 280 }, description: "Chai latte noisette." },
+        { id: 318, name: "Vanille", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 165, medium: 215, large: 275 }, description: "Chai latte vanille." },
+        { id: 319, name: "Caramel", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 175, medium: 225, large: 285 }, description: "Chai latte caramel." },
+        { id: 320, name: "Pain d'épices", category: "hot", subcategory: "Chai Latte", image: "🫖", prices: { small: 4.20, medium: 5.20, large: 6.20 }, calories: { small: 180, medium: 230, large: 290 }, description: "Chai latte pain d'épices." },
+
+        // === CAFÉ GLACÉ ===
+        { id: 401, name: "Iced Americano", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 3.50, medium: 4.50, large: 5.50 }, calories: { small: 5, medium: 10, large: 15 }, description: "Americano glacé rafraîchissant." },
+        { id: 402, name: "Cold Brew", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 3.80, medium: 4.80, large: 5.80 }, calories: { small: 5, medium: 5, large: 10 }, description: "Café infusé à froid." },
+        { id: 403, name: "Cold Brew Latte", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.20, medium: 5.20, large: 6.20 }, calories: { small: 80, medium: 110, large: 150 }, description: "Cold brew avec lait crémeux." },
+        { id: 404, name: "Iced Latte", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.00, medium: 5.00, large: 6.00 }, calories: { small: 100, medium: 140, large: 190 }, description: "Latte glacé classique." },
+        { id: 405, name: "Iced Latte Vanille", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.30, medium: 5.30, large: 6.30 }, calories: { small: 130, medium: 170, large: 220 }, description: "Latte glacé vanille." },
+        { id: 406, name: "Iced Latte Caramel", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.30, medium: 5.30, large: 6.30 }, calories: { small: 140, medium: 180, large: 230 }, description: "Latte glacé caramel." },
+        { id: 407, name: "Iced Latte Noisette", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.30, medium: 5.30, large: 6.30 }, calories: { small: 135, medium: 175, large: 225 }, description: "Latte glacé noisette." },
+        { id: 408, name: "Iced Latte Brown Sugar", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 150, medium: 190, large: 240 }, description: "Latte glacé sucre brun." },
+        { id: 409, name: "Iced Latte Mocha", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 160, medium: 210, large: 270 }, description: "Latte glacé mocha." },
+        { id: 410, name: "Iced Latte Mocha Blanc", category: "iced", subcategory: "Café Glacé", image: "🧊", prices: { small: 4.50, medium: 5.50, large: 6.50 }, calories: { small: 165, medium: 215, large: 275 }, description: "Latte glacé mocha blanc." }
+      ],
+      rewards: [
+        { name: "Café gratuit", points: 200 },
+        { name: "Pâtisserie", points: 150 },
+        { name: "Surclassement", points: 50 }
+      ],
+      stores: [
+        {
+          id: 1,
+          name: "Coffee Beanz Gare de Verviers Central",
+          address: "Rue d'Ensival, 1\n4800 Verviers",
+          distance: "2,1 km",
+          phone: "087 22 85 40",
+          hours: {
+            "Lundi": "05:00 - 21:00",
+            "Mardi": "05:00 - 21:00",
+            "Mercredi": "05:00 - 21:00",
+            "Jeudi": "05:00 - 21:00",
+            "Vendredi": "05:00 - 21:00",
+            "Samedi": "05:00 - 21:00",
+            "Dimanche": "07:00 - 21:00"
+          },
+          facilities: ["wifi", "parking", "accès PMR", "recharge sans fil"]
+        }
+      ]
+    };
+
+    // ===== STATE =====
+    let state = {
+      currentScreen: 'home',
+      selectedProduct: null,
+      selectedStore: null,
+      selectedCategory: 'all',
+      quantity: 1,
+      selectedSize: 'medium',
+      selectedMilk: 'full',
+      cart: [],
+      headerOpacity: 0
+    };
+
+    // ===== COULEURS =====
+    const colors = {
+      primary: '#1a1a1a',
+      primaryLight: '#4b5563',
+      primaryDark: '#0a0a0a',
+      accent: '#e5e7eb'
+    };
+
+    // ===== HELPERS =====
+    function getGreeting() {
+      const hour = new Date().getHours();
+      if (hour < 12) return 'Bonjour';
+      if (hour < 18) return 'Bon après-midi';
+      return 'Bonsoir';
+    }
+
+    // ===== COMPOSANTS SVG =====
+    function createWavePattern(height = 400) {
+      const waveWidth = 50;
+      const amplitude = 12;
+      const strokeWidth = 18;
+      const numWaves = 12;
+      
+      let paths = '';
+      for (let i = 0; i < numWaves; i++) {
+        let d = '';
+        const steps = 50;
+        for (let j = 0; j <= steps; j++) {
+          const y = (j / steps) * height;
+          const x = (waveWidth * i + waveWidth / 2) + Math.sin((y / height) * Math.PI * 6) * amplitude;
+          d += (j === 0 ? 'M' : 'L') + ` ${x} ${y} `;
+        }
+        paths += `<path d="${d}" stroke="${colors.primaryLight}" stroke-width="${strokeWidth}" fill="none" stroke-linecap="round" opacity="0.6"/>`;
+      }
+      
+      return `
+        <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="xMidYMid slice" viewBox="0 0 ${waveWidth * numWaves} ${height}" style="background-color: ${colors.primary}">
+          ${paths}
+        </svg>
+      `;
+    }
+
+    function createBeanzCup(size = 60) {
+      const h = size * 1.4;
+      return `
+        <div style="width: ${size}px; height: ${h}px;">
+          <svg viewBox="0 0 60 84" style="width: 100%; height: 100%;">
+            <ellipse cx="30" cy="8" rx="24" ry="5" fill="#e5e7eb"/>
+            <path d="M6 8 Q6 4 30 4 Q54 4 54 8" fill="#d1d5db"/>
+            <rect x="8" y="6" width="44" height="6" rx="1" fill="#e5e7eb"/>
+            <ellipse cx="30" cy="6" rx="20" ry="3" fill="#d1d5db"/>
+            <path d="M10 14 L14 76 Q14 80 30 80 Q46 80 46 76 L50 14 Z" fill="${colors.primary}"/>
+            <path d="M10 14 L11 22 Q30 24 49 22 L50 14 Z" fill="${colors.primaryDark}"/>
+            <text x="28" y="50" text-anchor="middle" font-size="11" font-weight="bold" fill="white" font-family="'DM Sans', sans-serif" letter-spacing="1" transform="rotate(-90, 28, 50)">BEANZ</text>
+            <text x="40" y="50" text-anchor="middle" font-size="5" font-weight="400" fill="white" font-family="'DM Sans', sans-serif" letter-spacing="2" opacity="0.9" transform="rotate(-90, 40, 50)">COFFEE</text>
+          </svg>
+        </div>
+      `;
+    }
+
+    function createCoffeeBeans() {
+      return `
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="${colors.primary}">
+          <ellipse cx="8" cy="12" rx="5" ry="7"/>
+          <path d="M8 6 Q6 12 8 18" stroke="white" stroke-width="1.5" fill="none"/>
+          <ellipse cx="16" cy="12" rx="5" ry="7"/>
+          <path d="M16 6 Q14 12 16 18" stroke="white" stroke-width="1.5" fill="none"/>
+        </svg>
+      `;
+    }
+
+    function createPalestineFlag() {
+      return `
+        <svg viewBox="0 0 64 40" class="w-full h-full">
+          <rect x="0" y="0" width="64" height="13.33" fill="#000000"/>
+          <rect x="0" y="13.33" width="64" height="13.33" fill="#FFFFFF"/>
+          <rect x="0" y="26.66" width="64" height="13.34" fill="#009639"/>
+          <polygon points="0,0 24,20 0,40" fill="#CE1126"/>
+        </svg>
+      `;
+    }
+
+    function createQRCode() {
+      return `
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+          <rect x="5" y="5" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="8" y="8" width="14" height="14" fill="white"/>
+          <rect x="11" y="11" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="75" y="5" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="78" y="8" width="14" height="14" fill="white"/>
+          <rect x="81" y="11" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="5" y="75" width="20" height="20" fill="${colors.primary}"/>
+          <rect x="8" y="78" width="14" height="14" fill="white"/>
+          <rect x="11" y="81" width="8" height="8" fill="${colors.primary}"/>
+          <rect x="30" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="38" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="34" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="58" y="46" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="50" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="62" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="38" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="46" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="62" y="10" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="42" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="10" y="66" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="30" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="42" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="54" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="86" y="66" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="30" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="42" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="54" y="86" width="4" height="4" fill="${colors.primary}"/>
+          <rect x="66" y="86" width="4" height="4" fill="${colors.primary}"/>
+        </svg>
+      `;
+    }
+
+    // ===== ÉCRANS =====
+    function renderHomeScreen() {
+      return `
+        <div class="h-full relative">
+          <!-- Header FIXE -->
+          <div class="absolute top-0 left-0 right-0" style="height: 250px; overflow: hidden;">
+            ${createWavePattern(400)}
+            <div class="absolute inset-0 bg-black" style="opacity: 0"></div>
+            <div class="relative z-10 p-4 pt-6" id="headerContent">
+              <div class="flex justify-between items-start">
+                <h1 class="text-xl font-light text-white">${getGreeting()} ${db.user.name}</h1>
+                <button onclick="navigate('settings')" class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Boutons rapides -->
+              <div class="flex mt-4 px-6" style="justify-content: space-between; margin-top: 28px;">
+                <button onclick="navigate('order')" class="bg-white rounded-xl p-4 flex flex-col items-center justify-center shadow-lg" style="width: 100px; height: 100px; padding-bottom: 21px;">
+                  <svg width="42" height="42" viewBox="223 39 140 293" style="margin-bottom: 10px;" fill="${colors.primary}" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(0,327) scale(0.1,-0.1)" stroke="none">
+                      <path d="M2284 2826 c-47 -21 -68 -55 -99 -160 -28 -96 -28 -96 -62 -96 -71 0 -112 -43 -127 -135 -4 -22 -9 -47 -12 -56 -9 -31 24 -51 79 -48 51 3 51 3 69 -156 19 -178 131 -1129 152 -1297 14 -116 33 -156 87 -183 26 -14 29 -20 29 -66 0 -61 11 -84 50 -104 25 -13 99 -15 498 -15 455 0 470 1 495 20 30 23 50 77 45 119 -2 25 4 34 32 53 19 13 43 39 53 58 13 26 38 219 102 770 47 404 88 751 91 770 5 35 5 35 58 32 72 -5 81 7 65 90 -6 35 -18 75 -26 90 -16 34 -61 58 -105 58 -33 0 -33 1 -57 83 -34 115 -54 151 -95 171 -30 14 -101 16 -663 16 -503 -1 -634 -3 -659 -14z m1299 -68 c13 -11 66 -153 67 -180 0 -5 -319 -8 -710 -8 -390 0 -710 2 -710 5 0 21 54 168 66 180 13 13 99 15 643 15 486 0 631 -3 644 -12z m215 -270 c6 -7 13 -30 17 -50 7 -38 7 -38 -875 -38 -882 0 -882 0 -875 33 4 17 11 40 17 50 8 16 59 17 857 17 667 0 851 -3 859 -12z m-102 -193 c-7 -46 -102 -846 -146 -1230 -24 -203 -34 -265 -49 -285 -18 -25 -18 -25 -551 -28 -577 -2 -573 -3 -585 51 -3 12 -43 351 -90 752 -47 402 -87 739 -90 751 -3 12 -3 23 -1 25 3 2 345 4 761 4 757 0 757 0 751 -40z m-276 -1653 c0 -21 -5 -43 -12 -50 -18 -18 -927 -17 -933 1 -2 6 -6 29 -10 50 -6 37 -6 37 475 37 480 0 480 0 480 -38z"/>
+                      <path d="M2823 1935 c-101 -51 -170 -152 -199 -295 -55 -276 120 -540 343 -517 302 31 410 525 167 759 -85 81 -211 102 -311 53z m62 -62 c-4 -10 -14 -45 -22 -78 -20 -79 -6 -159 47 -269 53 -108 60 -170 31 -266 -21 -70 -23 -72 -49 -65 -136 33 -236 240 -203 419 13 68 52 160 84 195 27 30 97 81 110 81 5 0 6 -8 2 -17z m138 3 c47 -19 123 -108 146 -172 71 -189 4 -420 -143 -496 -37 -19 -38 -19 -31 -1 4 10 15 45 23 77 21 79 6 166 -47 275 -53 109 -60 168 -32 261 23 75 29 79 84 56z"/>
+                    </g>
+                  </svg>
+                  <span class="text-xs font-medium" style="color: ${colors.primary}; margin-top: -12px;">Commander</span>
+                </button>
+                <button onclick="navigate('scan')" class="bg-white rounded-xl p-4 flex flex-col items-center justify-center shadow-lg" style="width: 100px; height: 100px;">
+                  <svg width="32" height="32" viewBox="0 0 122.61 122.88" fill="${colors.primary}" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M26.68,26.77H51.91V51.89H26.68V26.77ZM35.67,0H23.07A22.72,22.72,0,0,0,14.3,1.75a23.13,23.13,0,0,0-7.49,5l0,0a23.16,23.16,0,0,0-5,7.49A22.77,22.77,0,0,0,0,23.07V38.64H10.23V23.07a12.9,12.9,0,0,1,1-4.9A12.71,12.71,0,0,1,14,14l0,0a12.83,12.83,0,0,1,9.07-3.75h12.6V0ZM99.54,0H91.31V10.23h8.23a12.94,12.94,0,0,1,4.9,1A13.16,13.16,0,0,1,108.61,14l.35.36h0a13.07,13.07,0,0,1,2.45,3.82,12.67,12.67,0,0,1,1,4.89V38.64h10.23V23.07a22.95,22.95,0,0,0-6.42-15.93h0l-.37-.37a23.16,23.16,0,0,0-7.49-5A22.77,22.77,0,0,0,99.54,0Zm23.07,99.81V82.52H112.38V99.81a12.67,12.67,0,0,1-1,4.89,13.08,13.08,0,0,1-2.8,4.17,12.8,12.8,0,0,1-9.06,3.78H91.31v10.23h8.23a23,23,0,0,0,16.29-6.78,23.34,23.34,0,0,0,5-7.49,23,23,0,0,0,1.75-8.8ZM23.07,122.88h12.6V112.65H23.07A12.8,12.8,0,0,1,14,108.87l-.26-.24a12.83,12.83,0,0,1-2.61-4.08,12.7,12.7,0,0,1-.91-4.74V82.52H0V99.81a22.64,22.64,0,0,0,1.67,8.57,22.86,22.86,0,0,0,4.79,7.38l.31.35a23.2,23.2,0,0,0,7.5,5,22.84,22.84,0,0,0,8.8,1.75Zm66.52-33.1H96v6.33H89.59V89.78Zm-12.36,0h6.44v6H70.8V83.47H77V77.22h6.34V64.76H89.8v6.12h6.12v6.33H89.8v6.33H77.23v6.23ZM58.14,77.12h6.23V70.79h-6V64.46h6V58.13H58.24v6.33H51.8V58.13h6.33V39.33h6.43V58.12h6.23v6.33h6.13V58.12h6.43v6.33H77.23v6.33H70.8V83.24H64.57V95.81H58.14V77.12Zm31.35-19h6.43v6.33H89.49V58.12Zm-50.24,0h6.43v6.33H39.25V58.12Zm-12.57,0h6.43v6.33H26.68V58.12ZM58.14,26.77h6.43V33.1H58.14V26.77ZM26.58,70.88H51.8V96H26.58V70.88ZM32.71,77h13V89.91h-13V77Zm38-50.22H95.92V51.89H70.7V26.77Zm6.13,6.1h13V45.79h-13V32.87Zm-44,0h13V45.79h-13V32.87Z"/></svg>
+                  <span class="text-xs font-medium mt-2" style="color: ${colors.primary}; transform: translateY(-2px);">Scanner</span>
+                </button>
+                <button onclick="navigate('stores')" class="bg-white rounded-xl p-4 flex flex-col items-center justify-center shadow-lg" style="width: 100px; height: 100px;">
+                  <svg width="62" height="62" viewBox="0 0 600 400" fill="${colors.primary}" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(0.000000,400.000000) scale(0.050000,-0.050000)"
+fill="${colors.primary}" stroke="none">
+<path d="M3370 7463 c-214 -97 -250 -206 -250 -750 l0 -417 -320 -883 c-189
+-522 -320 -912 -320 -954 0 -248 253 -519 484 -519 34 0 36 -60 36 -1419 l0
+-1419 -85 -6 -85 -6 -6 -267 c-3 -180 2 -277 18 -295 34 -42 6282 -42 6316 0
+16 18 21 115 18 295 l-6 267 -85 6 -85 6 0 1417 0 1416 87 14 c229 34 433 275
+433 510 0 47 -122 409 -320 955 l-320 880 0 418 c0 545 -36 654 -250 751 -124
+56 -5136 56 -5260 0z m5229 -156 c112 -66 121 -105 121 -545 l0 -402 -2720 0
+-2720 0 0 402 c0 437 8 477 117 544 81 50 5117 51 5202 1z m-4659 -1100 c0 -7
+-108 -372 -240 -810 -132 -439 -240 -802 -240 -807 0 -6 -181 -10 -402 -10
+-225 0 -398 8 -395 18 4 9 138 378 297 819 l290 802 345 1 c190 0 345 -6 345
+-13z m979 -40 c-11 -29 -115 -369 -231 -755 -115 -386 -219 -731 -230 -767
+l-21 -65 -416 0 -416 0 26 75 c19 57 400 1318 462 1530 9 32 47 35 428 35
+l418 0 -20 -53z m681 44 c0 -5 -45 -359 -100 -787 -55 -428 -100 -793 -100
+-811 0 -29 -43 -33 -402 -33 -374 0 -402 3 -393 35 5 19 116 388 246 820 l237
+785 256 0 c141 0 256 -4 256 -9z m741 -735 c52 -403 99 -770 106 -815 l13 -81
+-462 0 -462 0 10 45 c6 25 53 383 104 795 52 413 97 762 101 776 6 19 67 24
+253 20 l244 -6 93 -734z m808 -41 c130 -432 241 -801 246 -820 9 -32 -19 -35
+-393 -35 -369 0 -402 3 -402 35 0 33 -164 1333 -192 1520 l-13 85 259 0 258 0
+237 -785z m758 750 c62 -212 443 -1473 462 -1530 l26 -75 -416 0 -416 0 -21
+65 c-11 36 -115 381 -230 767 -116 386 -220 726 -231 755 l-20 53 418 0 c381
+0 419 -3 428 -35z m1133 -768 c160 -440 293 -809 297 -819 3 -10 -168 -18
+-395 -18 -221 0 -402 4 -402 10 0 5 -108 369 -240 808 -132 439 -240 803 -240
+810 0 7 155 12 345 12 l345 -1 290 -802z m-5620 -1013 c0 -192 -287 -364 -506
+-303 -124 35 -323 256 -285 318 16 26 791 11 791 -15z m988 -14 c-116 -390
+-724 -398 -818 -10 l-12 50 421 0 c411 0 420 -1 409 -40z m962 -10 c-87 -356
+-600 -394 -767 -56 -56 112 -76 106 376 106 l403 0 -12 -50z m1080 0 c-58
+-236 -430 -368 -678 -240 -105 54 -202 159 -222 240 l-12 50 462 0 462 0 -12
+-50z m990 34 c0 -42 -85 -175 -149 -230 -216 -190 -594 -78 -661 196 l-12 50
+411 0 c226 0 411 -7 411 -16z m970 -34 c-83 -337 -590 -397 -764 -89 -82 144
+-95 139 365 139 l411 0 -12 -50z m953 7 c-62 -328 -524 -405 -718 -118 -112
+165 -121 161 330 158 373 -2 395 -4 388 -40z m-5634 -386 c233 -120 570 -53
+710 141 l57 79 41 -66 c169 -273 634 -290 851 -32 l73 88 106 -102 c243 -235
+626 -233 871 5 62 59 115 97 119 85 102 -305 694 -344 900 -61 l54 76 78 -90
+c218 -249 627 -249 841 1 l69 81 80 -90 c47 -54 120 -108 180 -134 l101 -43 0
+-1420 0 -1419 -2860 0 -2860 0 0 1419 0 1418 106 49 c62 28 139 86 184 138
+l78 89 61 -80 c34 -45 106 -104 160 -132z m5307 -3191 l-6 -150 -3030 0 -3030
+0 -6 150 -6 150 3042 0 3042 0 -6 -150z"/>
+<path d="M4066 7201 c-176 -107 -205 -499 -48 -649 146 -140 422 -34 422 161
+0 81 -124 67 -161 -18 -98 -222 -259 67 -176 315 43 127 158 120 187 -11 20
+-88 150 -89 150 -2 0 181 -218 299 -374 204z"/>
+<path d="M4860 7205 c-190 -95 -202 -571 -16 -684 222 -136 410 40 392 367
+-16 295 -166 422 -376 317z m183 -138 c38 -47 37 -368 -1 -415 -42 -50 -127
+-34 -144 28 -68 245 35 519 145 387z"/>
+<path d="M5554 6857 l3 -364 77 0 76 0 0 144 0 143 105 0 105 0 0 69 0 70
+-103 -5 -104 -4 -2 95 -2 95 148 0 c126 0 146 5 135 32 -7 17 -12 44 -12 60 0
+22 -43 28 -215 28 l-215 0 4 -363z"/>
+<path d="M6240 6855 l0 -365 75 2 75 2 6 143 6 143 110 0 111 0 -7 65 -6 65
+-105 -6 -105 -7 0 102 0 101 140 0 140 0 0 60 0 60 -220 0 -220 0 0 -365z"/>
+<path d="M6920 6855 l0 -365 220 0 220 0 0 65 0 65 -140 0 -140 0 0 90 0 90
+110 0 110 0 0 72 0 73 -110 -14 -110 -14 0 92 0 91 140 0 140 0 0 60 0 60
+-220 0 -220 0 0 -365z"/>
+<path d="M7640 6855 l0 -365 220 0 220 0 0 65 0 65 -140 0 -140 0 0 90 0 90
+110 0 110 0 0 72 0 73 -110 -14 -110 -14 0 92 0 91 140 0 140 0 0 60 0 60
+-220 0 -220 0 0 -365z"/>
+<path d="M3584 3556 c-47 -47 -33 -2290 15 -2315 58 -32 1546 -28 1577 3 35
+35 35 2277 0 2312 -34 34 -1558 34 -1592 0z m1476 -1156 l0 -1020 -680 0 -680
+0 0 1020 0 1020 680 0 680 0 0 -1020z"/>
+<path d="M3784 2456 c-53 -53 -12 -136 68 -136 78 0 108 22 108 80 0 76 -118
+114 -176 56z"/>
+<path d="M6714 3437 c-43 -24 -43 -77 0 -154 33 -57 33 -64 0 -132 -42 -90
+-44 -188 -3 -247 65 -92 173 -31 130 74 -20 48 -19 69 7 119 79 152 -20 404
+-134 340z"/>
+<path d="M6954 3437 c-43 -24 -43 -61 -1 -142 30 -58 30 -70 -3 -159 -44 -125
+-28 -229 42 -260 75 -35 123 19 89 101 -20 49 -19 69 7 120 79 152 -20 404
+-134 340z"/>
+<path d="M7194 3437 c-42 -24 -43 -61 -2 -141 30 -58 30 -70 -3 -166 -38 -111
+-30 -186 23 -240 65 -65 161 12 112 90 -20 33 -19 51 6 99 81 157 -19 423
+-136 358z"/>
+<path d="M6144 2796 c-35 -35 -31 -382 7 -527 41 -160 136 -313 269 -434 l110
+-100 -108 12 c-154 17 -241 -53 -155 -125 51 -42 1493 -20 1521 23 44 71 -8
+106 -147 98 l-125 -7 139 137 c88 88 152 171 177 232 34 85 44 95 102 95 268
+0 312 452 49 509 -30 7 -63 32 -74 57 l-19 44 -861 5 c-653 4 -866 0 -885 -19z
+m1631 -305 c-61 -986 -1425 -978 -1507 8 l-14 161 766 0 766 0 -11 -169z m241
+-27 c5 -48 -5 -69 -45 -95 -65 -43 -65 -43 -55 97 9 132 87 131 100 -2z"/>
+</g>
+                  </svg>
+                  <span class="text-xs font-medium mt-2" style="color: ${colors.primary}; transform: translateY(-6px);">Boutiques</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contenu scrollable -->
+          <div id="homeScroll" class="h-full overflow-y-auto scroll-content hide-scrollbar">
+            <div style="height: 250px;"></div>
+            <div class="bg-gray-100 relative z-20 min-h-full" style="padding-top: 48px;">
+              
+              <!-- Carte fidélité en absolute, chevauche seule le header noir -->
+              <div class="px-4 absolute left-0 right-0" style="top: -40px; z-index: 30;">
+                <div class="rounded-2xl p-4 shadow-xl" style="background-color: ${colors.accent}">
+                  <div class="flex items-center gap-3">
+                    ${createBeanzCup(45)}
+                    <div class="flex-1">
+                      <div class="flex items-center justify-center gap-2 mb-2">
+                        ${createCoffeeBeans()}
+                        <span class="text-xl font-bold" style="color: ${colors.primary}">${db.user.points} / 2000</span>
+                      </div>
+                      <div class="h-2 bg-white rounded-full overflow-hidden">
+                        <div class="h-full rounded-full transition-all" style="width: ${(db.user.points / 2000) * 100}%; background-color: ${colors.primary}"></div>
+                      </div>
+                      <div class="flex justify-between mt-1">
+                        <span class="text-xs" style="color: ${colors.primary}">Total: ${db.user.points}</span>
+                        <button onclick="navigate('history')" class="text-xs font-medium flex items-center gap-1" style="color: ${colors.primary}">
+                          Voir l'historique <span>›</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event 1 -->
+              <div class="px-3 mt-5">
+                <div class="bg-white rounded-2xl overflow-hidden shadow-lg">
+                  <div class="h-40 relative overflow-hidden" style="background-color: ${colors.accent}">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                      <div class="text-6xl opacity-30">☕</div>
+                    </div>
+                    <div class="absolute inset-0 p-4 flex flex-col justify-between">
+                      <div>
+                        <p class="text-xs font-bold uppercase tracking-wider" style="color: ${colors.primary}">LATTE ART</p>
+                        <p class="text-xs font-bold uppercase tracking-wider" style="color: ${colors.primary}">WORKSHOP</p>
+                        <p class="text-lg font-bold mt-1" style="color: ${colors.primary}">AVEC <span style="font-weight: 800">BEANZ</span></p>
+                        <p class="text-xs mt-1" style="color: ${colors.primary}">14 DÉCEMBRE | 15H-17H</p>
+                      </div>
+                      <div class="flex justify-end">${createBeanzCup(50)}</div>
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <h3 class="text-lg font-bold" style="color: ${colors.primary}">Apprenez le Latte Art</h3>
+                    <p class="text-sm mt-1" style="color: ${colors.primaryLight}">Inscrivez-vous pour un atelier créatif le 14 Déc.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Event 2 -->
+              <div class="px-3 mt-4 pb-6">
+                <div class="bg-white rounded-2xl overflow-hidden shadow-lg">
+                  <div class="h-32 relative overflow-hidden" style="background-color: ${colors.primary}">
+                    <div class="absolute inset-0 opacity-30">
+                      <svg class="w-full h-full" preserveAspectRatio="xMidYMid slice" viewBox="0 0 400 150">
+                        ${Array.from({length: 10}, (_, i) => `<path d="M${i * 45} 0 Q${i * 45 + 10} 37.5 ${i * 45} 75 Q${i * 45 - 10} 112.5 ${i * 45} 150" stroke="${colors.primaryLight}" stroke-width="12" fill="none"/>`).join('')}
+                      </svg>
+                    </div>
+                    <div class="absolute inset-0 p-4 flex items-center justify-between">
+                      <div>
+                        <p class="text-white text-xs font-bold uppercase tracking-wider">WINTER VIBES</p>
+                        <p class="text-white text-lg font-bold mt-1">FESTIVE CINEMA</p>
+                        <p class="text-white/80 text-xs mt-1">21 DÉCEMBRE | 19H</p>
+                      </div>
+                      <div class="text-4xl">🎬</div>
+                    </div>
+                  </div>
+                  <div class="p-4">
+                    <h3 class="text-lg font-bold" style="color: ${colors.primary}">Cinéma en Plein Air</h3>
+                    <p class="text-sm mt-1" style="color: ${colors.primaryLight}">Film de Noël avec chocolat chaud offert.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panier flottant -->
+          <div class="absolute bottom-20 right-4 z-30">
+            <button class="w-14 h-14 rounded-full flex items-center justify-center shadow-lg" style="background-color: ${colors.primary}">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </button>
+            ${state.cart.length > 0 ? `
+              <div class="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style="background-color: ${colors.primary}; border: 2px solid white; color: white;">
+                ${state.cart.length}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderOrderScreen() {
+      const categories = [
+        { id: 'all', label: 'Tout' },
+        { id: 'hot', label: 'Boissons chaudes' },
+        { id: 'cold', label: 'Boissons froides' },
+        { id: 'iced', label: 'Café glacé' },
+        { id: 'food', label: 'Food' }
+      ];
+
+      // Filter products by selected category
+      const filtered = state.selectedCategory === 'all' 
+        ? db.products 
+        : db.products.filter(p => p.category === state.selectedCategory);
+
+      // Group by subcategory
+      const grouped = {};
+      filtered.forEach(p => {
+        if (!grouped[p.subcategory]) grouped[p.subcategory] = [];
+        grouped[p.subcategory].push(p);
+      });
+
+      // Get subcategories for current category
+      const subcategories = Object.keys(grouped);
+
+      return `
+        <div id="orderScroll" class="h-full overflow-y-auto scroll-content hide-scrollbar bg-white">
+          <!-- Header noir style Costa -->
+          <div class="relative" style="background-color: ${colors.primary}">
+            <div class="absolute inset-0 opacity-20">
+              ${Array.from({length: 8}, (_, i) => `<svg class="absolute" style="left:${i * 55}px; top:0; height:100%;" viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M20 0 Q30 25 20 50 Q10 75 20 100" stroke="${colors.primaryLight}" stroke-width="8" fill="none"/></svg>`).join('')}
+            </div>
+            <div class="relative z-10 p-4 flex items-center justify-between">
+              <button onclick="navigate('history')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15,15"/>
+                </svg>
+              </button>
+              <div class="text-center">
+                <p class="text-white font-bold text-sm">Coffee Beanz Verviers</p>
+              </div>
+              <div class="w-6"></div>
+            </div>
+          </div>
+
+          <!-- Barre de recherche -->
+          <div class="p-3 bg-white">
+            <div class="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <span class="text-sm text-gray-400">Rechercher</span>
+            </div>
+          </div>
+
+          <!-- Onglets catégories principales -->
+          <div class="px-3 bg-white sticky top-0 z-20 border-b border-gray-100">
+            <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
+              ${categories.map(cat => `
+                <button onclick="switchCategory('${cat.id}')" class="whitespace-nowrap pb-1 text-sm font-bold" style="color: ${state.selectedCategory === cat.id ? colors.primary : '#9ca3af'}; border-bottom: ${state.selectedCategory === cat.id ? '2px solid ' + colors.primary : '2px solid transparent'}">
+                  ${cat.label}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Barre sous-catégories (scrollable) -->
+          ${subcategories.length > 1 ? `
+            <div class="px-3 py-2 bg-white sticky top-10 z-20 border-b border-gray-100">
+              <div class="flex gap-3 overflow-x-auto hide-scrollbar">
+                ${subcategories.map(sub => `
+                  <button onclick="scrollToSubcategory('${sub.replace(/[^a-zA-Z0-9]/g, '_')}')" class="whitespace-nowrap text-xs font-bold px-1 py-1" style="color: ${colors.primaryLight}">
+                    ${sub}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Produits groupés par sous-catégorie -->
+          <div class="pb-4">
+            ${Object.entries(grouped).map(([subcategory, products]) => `
+              <!-- Bandeau sous-catégorie -->
+              <div id="sub_${subcategory.replace(/[^a-zA-Z0-9]/g, '_')}" class="px-4 py-2 mt-1" style="background-color: ${colors.accent}">
+                <h2 class="text-sm font-bold" style="color: ${colors.primary}">${subcategory}</h2>
+              </div>
+              <!-- Grille produits -->
+              <div class="grid grid-cols-2">
+                ${products.map(product => `
+                  <button onclick="selectProduct(${product.id})" class="flex flex-col items-center p-4 border-b border-r border-gray-100 relative active:bg-gray-50">
+                    <div class="absolute top-3 right-3">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${colors.primaryLight}" stroke-width="1.5">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                      </svg>
+                    </div>
+                    <div class="mb-3 mt-2" style="height: 80px; display: flex; align-items: center; justify-content: center;">
+                      ${product.image.includes('.jpg') || product.image.includes('.png') 
+                        ? `<img src="${product.image}" alt="${product.name}" style="max-height: 80px; max-width: 100%; object-fit: contain;">` 
+                        : `<span class="text-5xl">${product.image}</span>`}
+                    </div>
+                    <p class="text-xs font-bold text-center" style="color: ${colors.primary}">${product.name}</p>
+                  </button>
+                `).join('')}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProductScreen() {
+      if (!state.selectedProduct) return '';
+      const p = state.selectedProduct;
+      const currentPrice = p.prices[state.selectedSize] * state.quantity;
+      const currentCalories = p.calories[state.selectedSize];
+
+      return `
+        <div class="h-full overflow-y-auto bg-white pb-24 hide-scrollbar">
+          <div class="p-3 flex justify-end">
+            <button onclick="navigate('order')" class="w-8 h-8 flex items-center justify-center">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="text-center py-4">
+            <div class="text-7xl">${p.image}</div>
+          </div>
+
+          <div class="px-4">
+            <div class="flex justify-between items-start">
+              <h1 class="text-xl font-bold" style="color: ${colors.primary}">${p.name}</h1>
+              <button>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </button>
+            </div>
+            <p class="text-gray-600 mt-2 text-xs leading-relaxed">${p.description}</p>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Quantité -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Quantité</h3>
+            <div class="flex items-center justify-center gap-4">
+              <button onclick="updateQuantity(-1)" class="w-10 h-10 rounded-full flex items-center justify-center text-xl" style="border: 2px solid ${colors.primary}; color: ${colors.primary}">−</button>
+              <span class="text-xl font-bold w-6 text-center" style="color: ${colors.primary}">${state.quantity}</span>
+              <button onclick="updateQuantity(1)" class="w-10 h-10 rounded-full flex items-center justify-center text-xl" style="border: 2px solid ${colors.primary}; color: ${colors.primary}">+</button>
+            </div>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Taille -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Taille</h3>
+            <div class="flex justify-center gap-2">
+              ${['small', 'medium', 'large'].map(size => `
+                <button onclick="updateSize('${size}')" class="flex flex-col items-center p-3 rounded-xl transition-all" style="min-width: 70px; background-color: ${state.selectedSize === size ? colors.accent : 'white'}; border: ${state.selectedSize === size ? '2px solid ' + colors.primaryLight : '2px solid transparent'}">
+                  <svg viewBox="0 0 40 60" class="w-8 h-12">
+                    <path d="M8 ${60 - (size === 'small' ? 35 : size === 'medium' ? 45 : 55)} L12 55 C12 57 15 58 20 58 C25 58 28 57 28 55 L32 ${60 - (size === 'small' ? 35 : size === 'medium' ? 45 : 55)} Z" fill="none" stroke="${state.selectedSize === size ? colors.primary : '#9ca3af'}" stroke-width="2"/>
+                  </svg>
+                  <span class="text-xs font-medium mt-1" style="color: ${state.selectedSize === size ? colors.primary : '#9ca3af'}">${size === 'small' ? 'Petit' : size === 'medium' ? 'Moyen' : 'Grand'}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Séparateur -->
+          <div class="my-4 px-4">
+            <svg viewBox="0 0 400 10" class="w-full h-2 text-gray-200">
+              <path d="M0 5 Q10 0 20 5 T40 5 T60 5 T80 5 T100 5 T120 5 T140 5 T160 5 T180 5 T200 5 T220 5 T240 5 T260 5 T280 5 T300 5 T320 5 T340 5 T360 5 T380 5 T400 5" stroke="currentColor" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Lait -->
+          <div class="px-4">
+            <h3 class="text-center font-bold uppercase tracking-wider text-xs mb-3" style="color: ${colors.primary}">Lait & Alternatives</h3>
+            <div class="flex justify-center gap-2">
+              ${[
+                { id: 'full', name: 'Lait Entier', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2h8l2 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6l2-4z"/><path d="M6 6h12"/></svg>' },
+                { id: 'soya', name: 'Soja', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="12" cy="12" rx="8" ry="10"/><ellipse cx="12" cy="12" rx="4" ry="5"/></svg>' },
+                { id: 'almond', name: 'Amande', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C8 2 4 8 4 14s4 8 8 8 8-2 8-8-4-12-8-12z"/><path d="M12 6v12"/></svg>' }
+              ].map(milk => `
+                <button onclick="updateMilk('${milk.id}')" class="flex flex-col items-center p-3 rounded-xl transition-all" style="min-width: 70px; background-color: ${state.selectedMilk === milk.id ? colors.accent : 'white'}; border: ${state.selectedMilk === milk.id ? '2px solid ' + colors.primaryLight : '2px solid transparent'}; color: ${state.selectedMilk === milk.id ? colors.primary : '#9ca3af'}">
+                  ${milk.icon}
+                  <span class="text-xs font-medium mt-1 text-center">${milk.name}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="px-4 mt-4">
+            <p class="text-xs text-gray-400 text-center">Les informations caloriques n'incluent pas les suppléments.</p>
+          </div>
+
+          <!-- Barre d'ajout -->
+          <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-3 flex items-center justify-between" style="max-width: 448px; margin: 0 auto;">
+            <div>
+              <p class="text-xl font-bold" style="color: ${colors.primary}">${currentPrice.toFixed(2)}€</p>
+              <p class="text-xs text-gray-500">${currentCalories} kcal</p>
+            </div>
+            <button onclick="addToCart()" class="px-6 py-3 rounded-full font-bold text-white text-sm" style="background-color: ${colors.primary}">Ajouter</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderScanScreen() {
+      return `
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar" style="background-color: ${colors.primary}">
+          <div class="p-4 flex justify-between items-center">
+            <h1 class="text-lg font-bold text-white">BEANZ WALLET</h1>
+            <button class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Carte membre -->
+          <div class="px-4">
+            <div class="rounded-2xl overflow-hidden shadow-lg relative" style="height: 180px;">
+              <div class="absolute inset-0 bg-gradient-to-br from-gray-400 to-gray-600">
+                <div class="absolute inset-0 opacity-20">
+                  <div class="absolute top-4 right-4 text-6xl">☕</div>
+                  <div class="absolute bottom-8 right-12 text-4xl">☕</div>
+                </div>
+              </div>
+              <div class="absolute inset-0 bg-gray-500/30"></div>
+              
+              <div class="absolute top-3 left-3 w-16 h-10 rounded overflow-hidden shadow-md">
+                ${createPalestineFlag()}
+              </div>
+
+              <div class="absolute top-3 right-3 bg-white/90 rounded-lg px-2 py-1">
+                <span class="text-xs font-bold" style="color: ${colors.primary}">BEANZ</span>
+                <span class="text-[8px] block text-center" style="color: ${colors.primary}">CLUB</span>
+              </div>
+
+              <div class="absolute bottom-0 left-0 right-0 p-4">
+                <p class="text-white text-xs font-medium opacity-80">FREE PALESTINE</p>
+                <p class="text-white text-lg font-bold">${db.user.name}</p>
+                <div class="flex justify-between items-end mt-1">
+                  <p class="text-white/80 text-xs">Membre depuis</p>
+                  <p class="text-white font-bold text-sm">${db.user.memberSince}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Balance -->
+          <div class="px-4 mt-4">
+            <div class="bg-gray-100 rounded-2xl p-4 flex justify-around items-center">
+              <div class="flex flex-col items-center">
+                ${createCoffeeBeans()}
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.points}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">Beanz Balance</span>
+              </div>
+              <div class="flex flex-col items-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                  <rect x="2" y="6" width="20" height="12" rx="2"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.eurBalance.toFixed(2)}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">EUR</span>
+              </div>
+              <div class="flex flex-col items-center">
+                ${createBeanzCup(28)}
+                <span class="text-xl font-bold mt-1" style="color: ${colors.primary}">${db.user.freeCoffee}</span>
+                <span class="text-xs" style="color: ${colors.primaryLight}">Free Coffee</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- QR Code -->
+          <div class="px-4 mt-4">
+            <div class="bg-white rounded-2xl p-6 flex flex-col items-center">
+              <div class="w-48 h-48 bg-white p-2 rounded-lg">
+                ${createQRCode()}
+              </div>
+              <p class="text-xs text-center mt-4" style="color: ${colors.primaryLight}">1 EUR = 4 Beanz</p>
+              <p class="text-xs text-center" style="color: ${colors.primaryLight}">200 Beanz = 1 Free Coffee</p>
+            </div>
+          </div>
+
+          <!-- Bouton Recharger -->
+          <div class="px-4 mt-4">
+            <button class="w-full py-3 rounded-full font-bold text-sm" style="background-color: ${colors.accent}; color: ${colors.primary}">Recharger</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderGiftScreen() {
+      return `
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar">
+          <div class="bg-white p-3 shadow-sm">
+            <h1 class="text-lg font-bold text-center" style="color: ${colors.primary}">Cadeaux</h1>
+          </div>
+          <div class="p-4">
+            <div class="bg-white rounded-xl p-5 shadow text-center">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5" class="mx-auto mb-3">
+                <polyline points="20,12 20,22 4,22 4,12"/>
+                <rect x="2" y="7" width="20" height="5"/>
+                <line x1="12" y1="22" x2="12" y2="7"/>
+                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+              </svg>
+              <h2 class="text-base font-bold mb-2" style="color: ${colors.primary}">Offrez un café</h2>
+              <p class="text-xs mb-4" style="color: ${colors.primaryLight}">Envoyez une carte cadeau</p>
+              <button class="w-full py-3 rounded-full font-bold text-white text-sm" style="background-color: ${colors.primary}">Envoyer</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTreatsScreen() {
+      return `
+        <div class="h-full overflow-y-auto scroll-content hide-scrollbar">
+          <div class="bg-white p-3 shadow-sm">
+            <h1 class="text-lg font-bold text-center" style="color: ${colors.primary}">Récompenses</h1>
+          </div>
+          <div class="p-4">
+            <div class="rounded-2xl p-4 mb-4" style="background-color: ${colors.accent}">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-bold" style="color: ${colors.primary}">Vos points</span>
+                <span class="text-xl font-bold" style="color: ${colors.primary}">${db.user.points}</span>
+              </div>
+              <div class="h-2 bg-white rounded-full overflow-hidden">
+                <div class="h-full rounded-full" style="width: ${(db.user.points / 200) * 100}%; background-color: ${colors.primary}"></div>
+              </div>
+              <p class="text-xs mt-2" style="color: ${colors.primary}">Plus que ${200 - db.user.points} points !</p>
+            </div>
+
+            <h2 class="text-sm font-bold mb-3" style="color: ${colors.primary}">Disponibles</h2>
+            
+            ${db.rewards.map(reward => `
+              <div class="bg-white rounded-xl p-3 shadow mb-2 flex items-center justify-between">
+                <div>
+                  <p class="font-medium text-sm" style="color: ${colors.primary}">${reward.name}</p>
+                  <p class="text-xs text-gray-500">${reward.points} pts</p>
+                </div>
+                <button class="px-3 py-1.5 rounded-full text-xs font-medium" style="background-color: ${db.user.points >= reward.points ? colors.primary : colors.accent}; color: ${db.user.points >= reward.points ? 'white' : colors.primaryLight}" ${db.user.points < reward.points ? 'disabled' : ''}>
+                  Échanger
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSettingsScreen() {
+      const menuSections = [
+        {
+          items: [
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="9"/></svg>', label: 'Informations personnelles', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>', label: 'Gérer les cartes cadeaux', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="2"/></svg>', label: 'Moyens de paiement', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15,15"/></svg>', label: 'Historique', screen: 'history' }
+          ]
+        },
+        {
+          items: [
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4z"/></svg>', label: 'Inviter des amis', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>', label: 'Partager vos Beanz', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20,12 20,22 4,22 4,12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', label: 'E-Cadeaux', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>', label: 'Réclamer des Beanz', screen: null }
+          ]
+        },
+        {
+          items: [
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>', label: 'Contactez-nous', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>', label: 'FAQ', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>', label: 'Localisation & Notifications', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 7c0-1.1.9-2 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7z"/><path d="M8 12h8"/><path d="M8 8h8"/><path d="M8 16h5"/></svg>', label: 'Conditions générales', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>', label: 'Politique de confidentialité', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>', label: 'Supprimer le compte', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>', label: 'Changer de langue / NL', screen: null },
+            { icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>', label: 'Signaler un problème', screen: null }
+          ]
+        }
+      ];
+
+      return `
+        <div class="h-full overflow-y-auto hide-scrollbar bg-white">
+          <!-- Header noir avec vagues -->
+          <div class="relative" style="background-color: ${colors.primary}">
+            <div class="absolute inset-0 opacity-20">
+              ${Array.from({length: 8}, (_, i) => `<svg class="absolute" style="left:${i * 55}px; top:0; height:100%;" viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M20 0 Q30 25 20 50 Q10 75 20 100" stroke="${colors.primaryLight}" stroke-width="8" fill="none"/></svg>`).join('')}
+            </div>
+            <div class="relative z-10 p-4 flex items-center gap-3">
+              <button onclick="navigate('home')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <h1 class="text-lg font-bold text-white flex-1 text-center pr-8">SALUT ${db.user.name.toUpperCase()}</h1>
+            </div>
+          </div>
+
+          <!-- Bandeau ajout téléphone -->
+          <div class="p-4 flex items-center justify-between" style="background: linear-gradient(135deg, #f0a0a0, #f5c0a0);">
+            <span class="text-sm font-medium" style="color: ${colors.primary}">Ajouter votre numéro de téléphone</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+
+          <!-- Sections de menu -->
+          ${menuSections.map(section => `
+            <div class="border-b-8 border-gray-100">
+              ${section.items.map(item => `
+                <button onclick="${item.screen ? `navigate('${item.screen}')` : ''}" class="w-full flex items-center gap-4 px-5 py-4 border-b border-gray-100 active:bg-gray-50">
+                  <span style="color: ${colors.primary}">${item.icon}</span>
+                  <span class="flex-1 text-sm font-medium text-left" style="color: ${colors.primary}">${item.label}</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                </button>
+              `).join('')}
+            </div>
+          `).join('')}
+
+          <!-- Déconnexion -->
+          <div class="border-b-8 border-gray-100">
+            <button class="w-full flex items-center gap-4 px-5 py-4 active:bg-gray-50">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              <span class="flex-1 text-sm font-medium text-left" style="color: ${colors.primary}">Déconnexion</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="1.5">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16,17 21,12 16,7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Footer -->
+          <div class="py-6 px-4 text-center">
+            <p class="text-xs text-gray-400">v 1.0.0</p>
+            <p class="text-xs text-gray-400 mt-1">Designed with ❤️ in <svg style="display:inline-block; vertical-align:middle;" width="20" height="14" viewBox="0 0 30 20"><rect x="0" y="0" width="10" height="20" fill="#000"/><rect x="10" y="0" width="10" height="20" fill="#FFD100"/><rect x="20" y="0" width="10" height="20" fill="#EF3340"/></svg></p>
+            <p class="text-sm font-bold mt-2" style="color: ${colors.primary}">Despa&Co.</p>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderHistoryScreen() {
+      return `
+        <div class="h-full flex flex-col bg-white">
+          <!-- Header noir avec vagues -->
+          <div class="relative" style="background-color: ${colors.primary}">
+            <div class="absolute inset-0 opacity-20">
+              ${Array.from({length: 8}, (_, i) => `<svg class="absolute" style="left:${i * 55}px; top:0; height:100%;" viewBox="0 0 40 100" preserveAspectRatio="none"><path d="M20 0 Q30 25 20 50 Q10 75 20 100" stroke="${colors.primaryLight}" stroke-width="8" fill="none"/></svg>`).join('')}
+            </div>
+            <div class="relative z-10 p-4 flex items-center gap-3">
+              <button onclick="navigate('settings')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <h1 class="text-lg font-bold text-white flex-1 text-center pr-8">HISTORIQUE</h1>
+            </div>
+          </div>
+
+          <!-- Contenu central -->
+          <div class="flex-1 flex flex-col items-center justify-start pt-8">
+            ${createBeanzCup(80)}
+            <p class="text-gray-400 text-sm mt-4 text-center px-8">Commencez à acheter pour gagner des cafés gratuits</p>
+          </div>
+
+          <!-- Bouton Commander en bas -->
+          <div class="p-4">
+            <button onclick="navigate('order')" class="w-full py-4 rounded-full font-bold text-white text-sm" style="background-color: ${colors.primary}">Commander</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStoresScreen() {
+      return `
+        <div class="h-full overflow-y-auto hide-scrollbar bg-white">
+          <!-- Header noir -->
+          <div class="p-4 flex items-center gap-3" style="background-color: ${colors.primary}">
+            <button onclick="navigate('home')">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h1 class="text-lg font-bold text-white flex-1 text-center pr-8">SÉLECTIONNER UNE BOUTIQUE</h1>
+          </div>
+
+          <!-- Barre de recherche -->
+          <div class="p-3 flex items-center gap-2" style="background-color: ${colors.primary}">
+            <button class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: rgba(255,255,255,0.15);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+                <circle cx="8" cy="6" r="1.5" fill="white"/><circle cx="16" cy="12" r="1.5" fill="white"/><circle cx="10" cy="18" r="1.5" fill="white"/>
+              </svg>
+            </button>
+            <div class="flex-1 bg-white rounded-lg h-10 px-3 flex items-center">
+              <span class="text-sm text-gray-400">Rechercher...</span>
+            </div>
+            <button class="w-10 h-10 rounded-lg flex items-center justify-center" style="background-color: ${colors.primary}; border: 1px solid rgba(255,255,255,0.3);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Séparateur grab -->
+          <div class="flex justify-center py-2">
+            <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
+          </div>
+
+          <!-- Section À PROXIMITÉ -->
+          <div class="px-4 pt-2 pb-1">
+            <p class="text-sm font-bold uppercase tracking-wider" style="color: ${colors.primary}">À proximité</p>
+          </div>
+
+          <div class="border-t border-gray-200">
+            ${db.stores.map(store => `
+              <button onclick="selectStore(${store.id})" class="w-full text-left p-4 flex items-center justify-between border-b border-gray-100 active:bg-gray-50">
+                <div class="flex-1 pr-4">
+                  <p class="font-bold text-sm" style="color: ${colors.primary}">${store.name}</p>
+                  <p class="text-xs text-gray-500 mt-1">${store.address.replace('\n', ', ')}</p>
+                  <p class="text-xs font-bold mt-1" style="color: ${colors.primary}">${store.distance}</p>
+                </div>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${colors.primary}" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"/>
+                </svg>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStoreDetailScreen() {
+      const store = db.stores.find(s => s.id === state.selectedStore);
+      if (!store) return '';
+
+      const now = new Date();
+      const days = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+      const today = days[now.getDay()];
+      const todayHours = store.hours[today];
+      const closeTime = todayHours.split(' - ')[1];
+      const openTime = todayHours.split(' - ')[0];
+      const currentHour = now.getHours();
+      const closeHour = parseInt(closeTime.split(':')[0]);
+      const openHour = parseInt(openTime.split(':')[0]);
+      const isOpen = currentHour >= openHour && currentHour < closeHour;
+
+      const facilityIcons = {
+        'wifi': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>',
+        'parking': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><text x="12" y="17" text-anchor="middle" font-size="14" font-weight="bold" fill="currentColor" stroke="none">P</text></svg>',
+        'accès PMR': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="4" r="2"/><path d="M12 6v6"/><path d="M8 12h8"/><path d="M9 18a4 4 0 1 0 6 0"/><path d="M15 12v4"/></svg>',
+        'recharge sans fil': '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="14" width="14" height="6" rx="2"/><line x1="12" y1="10" x2="12" y2="14"/><path d="M8 8a5.6 5.6 0 0 1 8 0"/><path d="M5 5a10 10 0 0 1 14 0"/></svg>'
+      };
+
+      return `
+        <div class="h-full overflow-y-auto hide-scrollbar bg-white">
+          <!-- Header noir -->
+          <div class="p-4 flex items-center gap-3" style="background-color: ${colors.primary}">
+            <button onclick="navigate('stores')">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h1 class="text-lg font-bold text-white flex-1 text-center pr-8">SÉLECTIONNER UNE BOUTIQUE</h1>
+          </div>
+
+          <!-- Grab bar -->
+          <div class="flex justify-center py-3">
+            <div class="w-10 h-1 bg-gray-300 rounded-full"></div>
+          </div>
+
+          <!-- Info boutique -->
+          <div class="px-6 pb-4 text-center">
+            <h2 class="text-lg font-bold" style="color: ${colors.primary}">${store.name}</h2>
+            <p class="text-sm text-gray-500 mt-2">${store.address.replace('\n', ', ')}</p>
+            <p class="text-sm mt-2">
+              <span>📞</span> <a href="tel:${store.phone}" style="color: ${colors.primary}">${store.phone}</a>
+            </p>
+            <p class="text-sm font-bold mt-2" style="color: ${colors.primary}">
+              ${store.distance} | <span style="color: ${isOpen ? '#16a34a' : '#dc2626'}">${isOpen ? 'OUVERT' : 'FERMÉ'}</span> jusqu'à ${closeTime}
+            </p>
+
+            <!-- Boutons -->
+            <div class="flex gap-3 mt-4 justify-center">
+              <button class="px-6 py-3 rounded-full text-sm font-bold text-white" style="background-color: ${colors.primary}">Itinéraire</button>
+              <button class="px-6 py-3 rounded-full text-sm font-bold border-2" style="color: ${colors.primary}; border-color: ${colors.primary}" onclick="navigate('order')">Commander ici</button>
+            </div>
+          </div>
+
+          <div class="mx-6 border-t border-gray-200"></div>
+
+          <!-- Horaires -->
+          <div class="px-6 py-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-center mb-4" style="color: ${colors.primaryLight}">Horaires d'ouverture</h3>
+            ${Object.entries(store.hours).map(([day, hours]) => `
+              <div class="flex justify-between py-1.5">
+                <span class="text-sm font-bold" style="color: ${day === today ? colors.primary : colors.primaryLight}">${day}</span>
+                <span class="text-sm" style="color: ${day === today ? colors.primary : colors.primaryLight}">${hours}</span>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Facilities -->
+          <div class="px-6 py-4">
+            <h3 class="text-sm font-bold uppercase tracking-wider text-center mb-4" style="color: ${colors.primaryLight}">Équipements</h3>
+            <div class="grid grid-cols-2 gap-4">
+              ${store.facilities.map(f => `
+                <div class="flex flex-col items-center gap-1" style="color: ${colors.primary}">
+                  ${facilityIcons[f] || ''}
+                  <span class="text-xs">${f}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderBottomNav() {
+      const items = [
+        { id: 'home', label: 'Accueil', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>' },
+        { id: 'scan', label: 'Scanner', icon: '<svg width="24" height="24" viewBox="0 0 122.61 122.88" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M26.68,26.77H51.91V51.89H26.68V26.77ZM35.67,0H23.07A22.72,22.72,0,0,0,14.3,1.75a23.13,23.13,0,0,0-7.49,5l0,0a23.16,23.16,0,0,0-5,7.49A22.77,22.77,0,0,0,0,23.07V38.64H10.23V23.07a12.9,12.9,0,0,1,1-4.9A12.71,12.71,0,0,1,14,14l0,0a12.83,12.83,0,0,1,9.07-3.75h12.6V0ZM99.54,0H91.31V10.23h8.23a12.94,12.94,0,0,1,4.9,1A13.16,13.16,0,0,1,108.61,14l.35.36h0a13.07,13.07,0,0,1,2.45,3.82,12.67,12.67,0,0,1,1,4.89V38.64h10.23V23.07a22.95,22.95,0,0,0-6.42-15.93h0l-.37-.37a23.16,23.16,0,0,0-7.49-5A22.77,22.77,0,0,0,99.54,0Zm23.07,99.81V82.52H112.38V99.81a12.67,12.67,0,0,1-1,4.89,13.08,13.08,0,0,1-2.8,4.17,12.8,12.8,0,0,1-9.06,3.78H91.31v10.23h8.23a23,23,0,0,0,16.29-6.78,23.34,23.34,0,0,0,5-7.49,23,23,0,0,0,1.75-8.8ZM23.07,122.88h12.6V112.65H23.07A12.8,12.8,0,0,1,14,108.87l-.26-.24a12.83,12.83,0,0,1-2.61-4.08,12.7,12.7,0,0,1-.91-4.74V82.52H0V99.81a22.64,22.64,0,0,0,1.67,8.57,22.86,22.86,0,0,0,4.79,7.38l.31.35a23.2,23.2,0,0,0,7.5,5,22.84,22.84,0,0,0,8.8,1.75Zm66.52-33.1H96v6.33H89.59V89.78Zm-12.36,0h6.44v6H70.8V83.47H77V77.22h6.34V64.76H89.8v6.12h6.12v6.33H89.8v6.33H77.23v6.23ZM58.14,77.12h6.23V70.79h-6V64.46h6V58.13H58.24v6.33H51.8V58.13h6.33V39.33h6.43V58.12h6.23v6.33h6.13V58.12h6.43v6.33H77.23v6.33H70.8V83.24H64.57V95.81H58.14V77.12Zm31.35-19h6.43v6.33H89.49V58.12Zm-50.24,0h6.43v6.33H39.25V58.12Zm-12.57,0h6.43v6.33H26.68V58.12ZM58.14,26.77h6.43V33.1H58.14V26.77ZM26.58,70.88H51.8V96H26.58V70.88ZM32.71,77h13V89.91h-13V77Zm38-50.22H95.92V51.89H70.7V26.77Zm6.13,6.1h13V45.79h-13V32.87Zm-44,0h13V45.79h-13V32.87Z"/></svg>' },
+        { id: 'order', label: 'Commander', icon: '<svg width="42" height="42" style="transform: translateY(4px)" viewBox="220 35 148 300" fill="white" xmlns="http://www.w3.org/2000/svg"><g transform="translate(0,327) scale(0.1,-0.1)" stroke="none"><path d="M2284 2826 c-47 -21 -68 -55 -99 -160 -28 -96 -28 -96 -62 -96 -71 0 -112 -43 -127 -135 -4 -22 -9 -47 -12 -56 -9 -31 24 -51 79 -48 51 3 51 3 69 -156 19 -178 131 -1129 152 -1297 14 -116 33 -156 87 -183 26 -14 29 -20 29 -66 0 -61 11 -84 50 -104 25 -13 99 -15 498 -15 455 0 470 1 495 20 30 23 50 77 45 119 -2 25 4 34 32 53 19 13 43 39 53 58 13 26 38 219 102 770 47 404 88 751 91 770 5 35 5 35 58 32 72 -5 81 7 65 90 -6 35 -18 75 -26 90 -16 34 -61 58 -105 58 -33 0 -33 1 -57 83 -34 115 -54 151 -95 171 -30 14 -101 16 -663 16 -503 -1 -634 -3 -659 -14z m1299 -68 c13 -11 66 -153 67 -180 0 -5 -319 -8 -710 -8 -390 0 -710 2 -710 5 0 21 54 168 66 180 13 13 99 15 643 15 486 0 631 -3 644 -12z m215 -270 c6 -7 13 -30 17 -50 7 -38 7 -38 -875 -38 -882 0 -882 0 -875 33 4 17 11 40 17 50 8 16 59 17 857 17 667 0 851 -3 859 -12z m-102 -193 c-7 -46 -102 -846 -146 -1230 -24 -203 -34 -265 -49 -285 -18 -25 -18 -25 -551 -28 -577 -2 -573 -3 -585 51 -3 12 -43 351 -90 752 -47 402 -87 739 -90 751 -3 12 -3 23 -1 25 3 2 345 4 761 4 757 0 757 0 751 -40z m-276 -1653 c0 -21 -5 -43 -12 -50 -18 -18 -927 -17 -933 1 -2 6 -6 29 -10 50 -6 37 -6 37 475 37 480 0 480 0 480 -38z"/><path d="M2823 1935 c-101 -51 -170 -152 -199 -295 -55 -276 120 -540 343 -517 302 31 410 525 167 759 -85 81 -211 102 -311 53z m62 -62 c-4 -10 -14 -45 -22 -78 -20 -79 -6 -159 47 -269 53 -108 60 -170 31 -266 -21 -70 -23 -72 -49 -65 -136 33 -236 240 -203 419 13 68 52 160 84 195 27 30 97 81 110 81 5 0 6 -8 2 -17z m138 3 c47 -19 123 -108 146 -172 71 -189 4 -420 -143 -496 -37 -19 -38 -19 -31 -1 4 10 15 45 23 77 21 79 6 166 -47 275 -53 109 -60 168 -32 261 23 75 29 79 84 56z"/></g></svg>' },
+        { id: 'gift', label: 'Cadeaux', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,12 20,22 4,22 4,12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' },
+        { id: 'treats', label: 'Récompenses', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/></svg>' }
+      ];
+
+      return `
+        <div class="bottom-nav">
+          ${items.map(item => {
+            if (item.id === 'order') {
+              const isOrderActive = state.currentScreen === 'order';
+              const orderBg = isOrderActive ? 'white' : '#1a1a1a';
+              const orderColor = isOrderActive ? '#1a1a1a' : 'white';
+              const orderShadow = isOrderActive ? '0 -4px 15px rgba(0, 0, 0, 0.08)' : '0 -4px 15px rgba(0, 0, 0, 0.15)';
+              const orderBorder = isOrderActive ? '1px solid #e5e7eb' : 'none';
+              const iconHtml = isOrderActive ? item.icon.replace('fill="white"', 'fill="#1a1a1a"') : item.icon;
+              return `
+                <button onclick="navigate('${item.id}')" class="nav-item-order" style="background-color: ${orderBg}; box-shadow: ${orderShadow}; border: ${orderBorder};">
+                  ${iconHtml}
+                  <span class="nav-item-label" style="color: ${orderColor}; font-weight: 600;">${item.label}</span>
+                </button>
+              `;
+            }
+            const isActive = state.currentScreen === item.id;
+            return `
+              <button onclick="navigate('${item.id}')" class="nav-item" style="color: ${isActive ? colors.primary : '#9ca3af'}">
+                ${item.icon}
+                <span class="nav-item-label" style="font-weight: ${isActive ? 500 : 400}">${item.label}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // ===== ACTIONS =====
+    function navigate(screen) {
+      state.currentScreen = screen;
+      state.headerOpacity = 0;
+      render();
+    }
+
+    function selectProduct(id) {
+      state.selectedProduct = db.products.find(p => p.id === id);
+      state.quantity = 1;
+      state.selectedSize = 'medium';
+      state.selectedMilk = 'full';
+      state.currentScreen = 'product';
+      render();
+    }
+
+    function updateQuantity(delta) {
+      state.quantity = Math.max(1, state.quantity + delta);
+      render();
+    }
+
+    function updateSize(size) {
+      state.selectedSize = size;
+      render();
+    }
+
+    function updateMilk(milk) {
+      state.selectedMilk = milk;
+      render();
+    }
+
+    function addToCart() {
+      if (state.selectedProduct) {
+        state.cart.push({
+          ...state.selectedProduct,
+          quantity: state.quantity,
+          size: state.selectedSize,
+          milk: state.selectedMilk,
+          price: state.selectedProduct.prices[state.selectedSize] * state.quantity
+        });
+        state.currentScreen = 'home';
+        state.quantity = 1;
+        state.selectedSize = 'medium';
+        state.selectedMilk = 'full';
+        render();
+      }
+    }
+
+    function selectStore(id) {
+      state.selectedStore = id;
+      state.currentScreen = 'storeDetail';
+      render();
+    }
+
+    function switchCategory(cat) {
+      state.selectedCategory = cat;
+      render();
+    }
+
+    function scrollToSubcategory(subId) {
+      const el = document.getElementById('sub_' + subId);
+      const scrollContainer = document.getElementById('orderScroll');
+      if (el && scrollContainer) {
+        const offset = el.offsetTop - 90;
+        scrollContainer.scrollTo({ top: offset, behavior: 'smooth' });
+      }
+    }
+
+    // ===== RENDER =====
+    function render() {
+      let content = '';
+      
+      switch (state.currentScreen) {
+        case 'home':
+          content = renderHomeScreen();
+          break;
+        case 'order':
+          content = renderOrderScreen();
+          break;
+        case 'product':
+          content = renderProductScreen();
+          break;
+        case 'scan':
+          content = renderScanScreen();
+          break;
+        case 'gift':
+          content = renderGiftScreen();
+          break;
+        case 'treats':
+          content = renderTreatsScreen();
+          break;
+        case 'stores':
+          content = renderStoresScreen();
+          break;
+        case 'storeDetail':
+          content = renderStoreDetailScreen();
+          break;
+        case 'settings':
+          content = renderSettingsScreen();
+          break;
+        case 'history':
+          content = renderHistoryScreen();
+          break;
+      }
+
+      const showNav = !['product', 'stores', 'storeDetail', 'settings', 'history'].includes(state.currentScreen);
+      
+      document.getElementById('app').innerHTML = `
+        ${content}
+        ${showNav ? renderBottomNav() : ''}
+      `;
+
+      // Fondu fluide du contenu header au scroll
+      if (state.currentScreen === 'home') {
+        const scrollEl = document.getElementById('homeScroll');
+        if (scrollEl) {
+          scrollEl.addEventListener('scroll', function(e) {
+            const scrollTop = e.target.scrollTop;
+            const fadeStart = 40;
+            const fadeEnd = 180;
+            const opacity = Math.max(0, 1 - Math.max(0, scrollTop - fadeStart) / (fadeEnd - fadeStart));
+            const headerContent = document.getElementById('headerContent');
+            if (headerContent) {
+              headerContent.style.opacity = opacity;
+              headerContent.style.transition = 'opacity 0.05s linear';
+            }
+          });
+        }
+      }
+    }
+
+    // ===== INIT =====
+    render();
+  </script>
+</body>
+</html>
