@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BEANZ Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    * { font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
+    body { background: #f3f4f6; margin: 0; min-height: 100vh; }
+
+    .status-badge { padding: 4px 10px; border-radius: 50px; font-size: 11px; font-weight: 700; }
+    .status-pending { background: #FEF3C7; color: #92400E; }
+    .status-confirmed { background: #DBEAFE; color: #1E40AF; }
+    .status-preparing { background: #E0E7FF; color: #4338CA; }
+    .status-ready { background: #D1FAE5; color: #065F46; }
+    .status-collected { background: #E5E7EB; color: #6B7280; }
+
+    .order-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: all 0.2s; }
+    .order-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+    .action-btn { padding: 8px 16px; border-radius: 50px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; }
+    .action-btn:hover { transform: scale(1.03); }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .tab-btn { padding: 8px 16px; border-radius: 50px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
+    .tab-active { background: #1a1a1a; color: white; }
+    .tab-inactive { background: transparent; color: #9ca3af; }
+
+    #reader { width: 100%; max-width: 400px; margin: 0 auto; }
+    #reader video { border-radius: 12px; }
+
+    .client-card { background: white; border-radius: 16px; padding: 20px; margin-top: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body>
+  <div id="app" style="max-width: 800px; margin: 0 auto; padding: 16px;"></div>
+
+  <script>
+    // ===== CONFIG =====
+    const API_URL = 'https://cofebezreact-production.up.railway.app/api';
+    let authToken = localStorage.getItem('beanz_admin_token') || null;
+    let currentTab = 'orders'; // 'orders' | 'scanner'
+    let filterStatus = ''; // '' = tous
+    let orders = [];
+    let scannedClient = null;
+    let scannerInstance = null;
+
+    const statusLabels = {
+      pending: '⏳ En attente',
+      confirmed: '✓ Confirmée',
+      preparing: '🔥 En préparation',
+      ready: '✅ Prête',
+      collected: '📦 Récupérée'
+    };
+
+    const statusActions = {
+      pending: { next: 'confirmed', label: 'Confirmer', color: '#2563EB' },
+      confirmed: { next: 'preparing', label: 'En préparation', color: '#4338CA' },
+      preparing: { next: 'ready', label: 'Prête', color: '#059669' },
+      ready: { next: 'collected', label: 'Récupérée', color: '#6B7280' }
+    };
+
+    // ===== AUTH =====
+    function renderLogin() {
+      document.getElementById('app').innerHTML = `
+        <div style="max-width: 380px; margin: 80px auto; padding: 32px;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <img src="images/gobelet_coffee_beanz.png" alt="BEANZ" style="width:40px; height:56px; object-fit:contain; margin: 0 auto 8px;">
+            <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a;">BEANZ Admin</h1>
+            <p style="font-size: 13px; color: #9ca3af; margin-top: 4px;">Espace réservé au staff</p>
+          </div>
+          <div id="loginError" style="display:none; background:#FEE2E2; color:#991B1B; padding:10px 14px; border-radius:10px; font-size:12px; margin-bottom:14px;"></div>
+          <div style="margin-bottom: 12px;">
+            <input id="adminPseudo" type="text" placeholder="Pseudo admin" style="width:100%; padding:12px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none;">
+          </div>
+          <div style="margin-bottom: 20px;">
+            <input id="adminPassword" type="password" placeholder="Mot de passe" style="width:100%; padding:12px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none;">
+          </div>
+          <button id="adminLoginBtn" onclick="adminLogin()" style="width:100%; padding:14px; border-radius:50px; background:#1a1a1a; color:white; font-weight:700; font-size:14px; border:none; cursor:pointer;">
+            Connexion Admin
+          </button>
+        </div>
+      `;
+    }
+
+    async function adminLogin() {
+      const pseudo = document.getElementById('adminPseudo').value.trim();
+      const password = document.getElementById('adminPassword').value;
+      const errorEl = document.getElementById('loginError');
+      const btn = document.getElementById('adminLoginBtn');
+
+      if (!pseudo || !password) {
+        errorEl.textContent = 'Remplis tous les champs';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.textContent = 'Connexion...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(API_URL + '/auth/connexion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pseudo, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorEl.textContent = data.error || 'Erreur';
+          errorEl.style.display = 'block';
+          btn.textContent = 'Connexion Admin';
+          btn.disabled = false;
+          return;
+        }
+
+        // Vérifier que c'est bien un admin (décodage simple du JWT)
+        const payload = JSON.parse(atob(data.token.split('.')[1]));
+        if (payload.role !== 'admin') {
+          errorEl.textContent = 'Ce compte n\'est pas administrateur';
+          errorEl.style.display = 'block';
+          btn.textContent = 'Connexion Admin';
+          btn.disabled = false;
+          return;
+        }
+
+        authToken = data.token;
+        localStorage.setItem('beanz_admin_token', data.token);
+        renderDashboard();
+
+      } catch (err) {
+        errorEl.textContent = 'Serveur injoignable';
+        errorEl.style.display = 'block';
+        btn.textContent = 'Connexion Admin';
+        btn.disabled = false;
+      }
+    }
+
+    function adminLogout() {
+      localStorage.removeItem('beanz_admin_token');
+      authToken = null;
+      if (scannerInstance) { scannerInstance.stop().catch(() => {}); scannerInstance = null; }
+      renderLogin();
+    }
+
+    // ===== DASHBOARD =====
+    async function renderDashboard() {
+      await loadOrders();
+      renderApp();
+    }
+
+    async function loadOrders() {
+      try {
+        const url = filterStatus
+          ? API_URL + '/admin/orders?status=' + filterStatus
+          : API_URL + '/admin/orders';
+        const res = await fetch(url, {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) { adminLogout(); return; }
+          return;
+        }
+        const data = await res.json();
+        orders = data.orders || [];
+      } catch (err) {
+        console.error('Erreur chargement commandes:', err);
+      }
+    }
+
+    function renderApp() {
+      const activeOrders = orders.filter(o => o.status !== 'collected');
+      const todayCount = orders.length;
+      const pendingCount = orders.filter(o => o.status === 'pending').length;
+      const readyCount = orders.filter(o => o.status === 'ready').length;
+
+      document.getElementById('app').innerHTML = `
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="images/gobelet_coffee_beanz.png" alt="BEANZ" style="width:30px; height:42px; object-fit:contain;">
+              <div>
+                <h1 style="font-size:22px; font-weight:700; color:#1a1a1a;">BEANZ Admin</h1>
+                <p style="font-size:12px; color:#9ca3af;">Dashboard de gestion</p>
+              </div>
+            </div>
+          <button onclick="adminLogout()" style="padding:8px 16px; border-radius:50px; background:#f3f4f6; border:none; font-size:12px; font-weight:600; color:#6B7280; cursor:pointer;">Déconnexion</button>
+        </div>
+
+        <!-- Stats rapides -->
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:20px;">
+          <div style="background:white; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#1a1a1a;">${todayCount}</p>
+            <p style="font-size:11px; color:#9ca3af;">Commandes</p>
+          </div>
+          <div style="background:#FEF3C7; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#92400E;">${pendingCount}</p>
+            <p style="font-size:11px; color:#92400E;">En attente</p>
+          </div>
+          <div style="background:#D1FAE5; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#065F46;">${readyCount}</p>
+            <p style="font-size:11px; color:#065F46;">Prêtes</p>
+          </div>
+        </div>
+
+        <!-- Onglets -->
+        <div style="display:flex; gap:8px; margin-bottom:16px; background:white; border-radius:50px; padding:4px;">
+          <button onclick="switchTab('orders')" class="tab-btn ${currentTab === 'orders' ? 'tab-active' : 'tab-inactive'}" style="flex:1;">Commandes</button>
+          <button onclick="switchTab('scanner')" class="tab-btn ${currentTab === 'scanner' ? 'tab-active' : 'tab-inactive'}" style="flex:1;">Scanner QR</button>
+        </div>
+
+        <!-- Contenu -->
+        <div id="tabContent"></div>
+      `;
+
+      if (currentTab === 'orders') renderOrdersTab();
+      else renderScannerTab();
+    }
+
+    function switchTab(tab) {
+      // Arrêter le scanner si on quitte l'onglet
+      if (currentTab === 'scanner' && scannerInstance) {
+        scannerInstance.stop().catch(() => {});
+        scannerInstance = null;
+      }
+      currentTab = tab;
+      renderApp();
+    }
+
+    // ===== ONGLET COMMANDES =====
+    function renderOrdersTab() {
+      const filters = ['', 'pending', 'confirmed', 'preparing', 'ready', 'collected'];
+      const filterLabels = { '': 'Toutes', pending: 'En attente', confirmed: 'Confirmées', preparing: 'Préparation', ready: 'Prêtes', collected: 'Récupérées' };
+
+      const filtersHtml = filters.map(f => `
+        <button onclick="setFilter('${f}')" class="tab-btn ${filterStatus === f ? 'tab-active' : 'tab-inactive'}" style="font-size:11px; padding:6px 12px;">
+          ${filterLabels[f]}
+        </button>
+      `).join('');
+
+      const ordersHtml = orders.length === 0
+        ? `<div style="text-align:center; padding:40px; color:#9ca3af;"><p>Aucune commande</p></div>`
+        : orders.map(order => {
+            const user = order.users || {};
+            const action = statusActions[order.status];
+            const itemsList = (order.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ');
+            const time = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+            return `
+              <div class="order-card">
+                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+                  <div>
+                    <p style="font-size:14px; font-weight:700; color:#1a1a1a;">${user.prenom || '?'} @${user.pseudo || '?'}</p>
+                    <p style="font-size:11px; color:#9ca3af;">${time} · ${user.card_number || ''}</p>
+                  </div>
+                  <span class="status-badge status-${order.status}">${statusLabels[order.status]}</span>
+                </div>
+                <p style="font-size:12px; color:#4b5563; margin-bottom:8px;">${itemsList}</p>
+                ${order.note ? `<p style="font-size:11px; color:#9ca3af; font-style:italic; margin-bottom:8px;">📝 ${order.note}</p>` : ''}
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <p style="font-size:16px; font-weight:700; color:#1a1a1a;">${Number(order.total).toFixed(2)}€</p>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <span style="font-size:11px; color:#22c55e; font-weight:600;">+${order.points_earned} pts</span>
+                    ${action ? `<button class="action-btn" onclick="updateOrderStatus('${order.id}', '${action.next}')" style="background:${action.color}; color:white;">${action.label}</button>` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:4px;">
+          ${filtersHtml}
+        </div>
+        <button onclick="loadOrders().then(renderApp)" style="width:100%; padding:10px; border-radius:10px; background:white; border:1.5px solid #e5e7eb; font-size:12px; font-weight:600; color:#1a1a1a; cursor:pointer; margin-bottom:14px;">↻ Rafraîchir</button>
+        ${ordersHtml}
+      `;
+    }
+
+    async function setFilter(status) {
+      filterStatus = status;
+      await loadOrders();
+      renderApp();
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+      try {
+        const res = await fetch(API_URL + '/admin/orders/' + orderId + '/status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        if (res.ok) {
+          await loadOrders();
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Erreur update statut:', err);
+      }
+    }
+
+    // ===== ONGLET SCANNER =====
+    function renderScannerTab() {
+      document.getElementById('tabContent').innerHTML = `
+        <div style="text-align:center; margin-bottom:16px;">
+          <p style="font-size:14px; font-weight:600; color:#1a1a1a;">Scanner le QR code client</p>
+          <p style="font-size:12px; color:#9ca3af;">Pointez la caméra vers le QR code du client</p>
+        </div>
+        <div id="reader"></div>
+        <div id="scanResult"></div>
+      `;
+
+      // Démarrer le scanner
+      setTimeout(() => {
+        scannerInstance = new Html5Qrcode("reader");
+        scannerInstance.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onScanSuccess,
+          () => {} // Ignorer les erreurs de scan
+        ).catch(err => {
+          document.getElementById('scanResult').innerHTML = `
+            <div style="text-align:center; padding:20px; color:#991B1B; background:#FEE2E2; border-radius:12px; margin-top:16px;">
+              <p style="font-size:13px;">Impossible d'accéder à la caméra</p>
+              <p style="font-size:11px; margin-top:4px;">Vérifie les permissions du navigateur</p>
+            </div>
+          `;
+        });
+      }, 100);
+    }
+
+    async function onScanSuccess(decodedText) {
+      // Arrêter le scanner après un scan réussi
+      if (scannerInstance) {
+        scannerInstance.stop().catch(() => {});
+        scannerInstance = null;
+      }
+
+      try {
+        const qrData = JSON.parse(decodedText);
+
+        const res = await fetch(API_URL + '/admin/scan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify({ userId: qrData.userId, pseudo: qrData.pseudo })
+        });
+
+        if (!res.ok) {
+          document.getElementById('scanResult').innerHTML = `
+            <div style="text-align:center; padding:20px; color:#991B1B; background:#FEE2E2; border-radius:12px; margin-top:16px;">
+              Client non trouvé
+            </div>
+          `;
+          return;
+        }
+
+        const data = await res.json();
+        scannedClient = data;
+        renderScannedClient();
+
+      } catch (err) {
+        document.getElementById('scanResult').innerHTML = `
+          <div style="text-align:center; padding:20px; color:#991B1B; background:#FEE2E2; border-radius:12px; margin-top:16px;">
+            QR code invalide
+          </div>
+        `;
+      }
+    }
+
+    function renderScannedClient() {
+      if (!scannedClient) return;
+      const client = scannedClient.client;
+      const clientOrders = scannedClient.orders || [];
+
+      const ordersHtml = clientOrders.length === 0
+        ? `<p style="text-align:center; color:#9ca3af; font-size:13px; padding:16px;">Aucune commande active</p>`
+        : clientOrders.map(order => {
+            const action = statusActions[order.status];
+            const itemsList = (order.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ');
+            return `
+              <div style="padding:12px; border:1.5px solid #e5e7eb; border-radius:12px; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                  <span style="font-size:13px; font-weight:600; color:#1a1a1a;">${Number(order.total).toFixed(2)}€</span>
+                  <span class="status-badge status-${order.status}">${statusLabels[order.status]}</span>
+                </div>
+                <p style="font-size:11px; color:#4b5563; margin-bottom:8px;">${itemsList}</p>
+                ${action ? `<button class="action-btn" onclick="updateOrderStatus('${order.id}', '${action.next}').then(() => { switchTab('scanner'); })" style="background:${action.color}; color:white; width:100%;">${action.label}</button>` : ''}
+              </div>
+            `;
+          }).join('');
+
+      document.getElementById('scanResult').innerHTML = `
+        <div class="client-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div>
+              <p style="font-size:16px; font-weight:700; color:#1a1a1a;">${client.prenom} @${client.pseudo}</p>
+              <p style="font-size:11px; color:#9ca3af;">Membre depuis ${client.member_since} · ${client.card_number}</p>
+            </div>
+            <div style="text-align:right;">
+              <p style="font-size:18px; font-weight:700; color:#1a1a1a;">${client.points}</p>
+              <p style="font-size:10px; color:#9ca3af;">Beanz</p>
+            </div>
+          </div>
+
+          <h3 style="font-size:13px; font-weight:700; color:#1a1a1a; margin-bottom:8px;">Commandes actives</h3>
+          ${ordersHtml}
+
+          <button onclick="scannedClient=null; switchTab('scanner');" style="width:100%; padding:12px; border-radius:50px; background:#f3f4f6; border:none; font-size:13px; font-weight:600; color:#1a1a1a; cursor:pointer; margin-top:12px;">
+            Scanner un autre client
+          </button>
+        </div>
+      `;
+    }
+
+    // ===== INIT =====
+    async function init() {
+      if (!authToken) {
+        renderLogin();
+        return;
+      }
+      // Vérifier que le token est valide et admin
+      try {
+        const payload = JSON.parse(atob(authToken.split('.')[1]));
+        if (payload.role !== 'admin') { adminLogout(); return; }
+        renderDashboard();
+      } catch (err) {
+        adminLogout();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
