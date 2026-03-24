@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BEANZ Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    * { font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
+    body { background: #f3f4f6; margin: 0; min-height: 100vh; }
+
+    .status-badge { padding: 4px 10px; border-radius: 50px; font-size: 11px; font-weight: 700; }
+    .status-pending { background: #FEF3C7; color: #92400E; }
+    .status-confirmed { background: #DBEAFE; color: #1E40AF; }
+    .status-preparing { background: #E0E7FF; color: #4338CA; }
+    .status-ready { background: #D1FAE5; color: #065F46; }
+    .status-collected { background: #E5E7EB; color: #6B7280; }
+
+    .order-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: all 0.2s; }
+    .order-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+    .action-btn { padding: 8px 16px; border-radius: 50px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; }
+    .action-btn:hover { transform: scale(1.03); }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .tab-btn { padding: 8px 16px; border-radius: 50px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
+    .tab-active { background: #1a1a1a; color: white; }
+    .tab-inactive { background: transparent; color: #9ca3af; }
+
+    #reader { width: 100%; max-width: 400px; margin: 0 auto; }
+    #reader video { border-radius: 12px; }
+
+    .client-card { background: white; border-radius: 16px; padding: 20px; margin-top: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body>
+  <div id="app" style="max-width: 800px; margin: 0 auto; padding: 16px;"></div>
+
+  <script>
+    // ===== CONFIG =====
+    const API_URL = 'https://cofebezreact-production.up.railway.app/api';
+    let authToken = localStorage.getItem('beanz_admin_token') || null;
+    let currentTab = 'orders'; // 'orders' | 'scanner'
+    let filterStatus = ''; // '' = tous
+    let orders = [];
+    let scannedClient = null;
+    let scannerInstance = null;
+
+    // State pour commande sur place
+    let showInstoreModal = false;
+    let instoreCart = [];
+    let instoreCategory = 'hot';
+
+    // Produits disponibles (uniquement page Commander, pas Beanz Shop)
+    const products = [
+      // === FOOD ===
+      { id: 101, name: "Mamma Mia", category: "food", subcategory: "Panini", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 102, name: "Ham & Cheese", category: "food", subcategory: "Panini", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 103, name: "Thon", category: "food", subcategory: "Panini", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 104, name: "French Cheese", category: "food", subcategory: "Panini", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 105, name: "Chicken", category: "food", subcategory: "Panini", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 106, name: "Salmon", category: "food", subcategory: "Panini", prices: { small: 6.00, medium: 7.00, large: 8.00 } },
+      { id: 107, name: "Healthy Cheese", category: "food", subcategory: "Bagel", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 108, name: "Ham & Cheese", category: "food", subcategory: "Bagel", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 109, name: "Salmon & Cream", category: "food", subcategory: "Bagel", prices: { small: 6.00, medium: 7.00, large: 8.00 } },
+      { id: 110, name: "Chicken", category: "food", subcategory: "Wrap", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 111, name: "Healthy Cheese", category: "food", subcategory: "Sandwichs", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 112, name: "Mamma Mia", category: "food", subcategory: "Sandwichs", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 113, name: "Ham & Cheese", category: "food", subcategory: "Sandwichs", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 114, name: "Thon", category: "food", subcategory: "Sandwichs", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 115, name: "Frenchy", category: "food", subcategory: "Sandwichs", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 116, name: "Fish & Cream", category: "food", subcategory: "Sandwichs", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 117, name: "Healthy Cheese", category: "food", subcategory: "Toast", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 118, name: "Ham & Cheese", category: "food", subcategory: "Toast", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 119, name: "Salmon & Cream", category: "food", subcategory: "Toast", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      // === BOISSONS FROIDES ===
+      { id: 201, name: "Orange", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 202, name: "Ananas", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 203, name: "Mangue", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 204, name: "Fraise", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 205, name: "Fruits des bois", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 206, name: "Mangue Banane", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 207, name: "Fraise Ananas", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 208, name: "Mangue Menthe", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 209, name: "Mangue Fraise Banane", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 210, name: "Citron", category: "cold", subcategory: "Mojitos", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 211, name: "Fraise", category: "cold", subcategory: "Mojitos", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 212, name: "Violette", category: "cold", subcategory: "Mojitos", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 213, name: "Lemon", category: "cold", subcategory: "Iced Tea", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 214, name: "Spicy Peach", category: "cold", subcategory: "Iced Tea", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 215, name: "Coco-Mango", category: "cold", subcategory: "Iced Tea", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 216, name: "Bueno", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 217, name: "M&M'S", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 218, name: "Oreo", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 219, name: "Snickers", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 220, name: "Twix", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 221, name: "Speculoos", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 222, name: "Nutella", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      // === BOISSONS CHAUDES ===
+      { id: 301, name: "Espresso", category: "hot", subcategory: "Cafés", prices: { small: 2.00, medium: 2.50, large: 3.00 } },
+      { id: 302, name: "Black Coffee", category: "hot", subcategory: "Cafés", prices: { small: 2.50, medium: 3.20, large: 3.80 } },
+      { id: 303, name: "Americano", category: "hot", subcategory: "Cafés", prices: { small: 2.80, medium: 3.50, large: 4.20 } },
+      { id: 304, name: "Cortado", category: "hot", subcategory: "Cafés", prices: { small: 3.00, medium: 3.70, large: 4.40 } },
+      { id: 305, name: "Flat White", category: "hot", subcategory: "Cafés", prices: { small: 3.90, medium: 4.90, large: 5.90 } },
+      { id: 306, name: "Cappuccino", category: "hot", subcategory: "Cafés", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 307, name: "Cafe Latte", category: "hot", subcategory: "Cafés", prices: { small: 3.80, medium: 4.80, large: 5.80 } },
+      { id: 308, name: "Chocolat Chaud", category: "hot", subcategory: "Cafés", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 309, name: "Café Mocha", category: "hot", subcategory: "Cafés", prices: { small: 4.20, medium: 5.20, large: 6.20 } },
+      { id: 310, name: "Café Mocha Blanc", category: "hot", subcategory: "Cafés", prices: { small: 4.20, medium: 5.20, large: 6.20 } },
+      { id: 311, name: "English Tea", category: "hot", subcategory: "Thés", prices: { small: 2.50, medium: 3.20, large: 3.80 } },
+      { id: 312, name: "Menthe", category: "hot", subcategory: "Thés", prices: { small: 2.50, medium: 3.20, large: 3.80 } },
+      { id: 313, name: "Menthe Gingembre", category: "hot", subcategory: "Thés", prices: { small: 3.00, medium: 3.70, large: 4.40 } },
+      { id: 314, name: "Menthe Citron", category: "hot", subcategory: "Thés", prices: { small: 3.00, medium: 3.70, large: 4.40 } },
+      { id: 315, name: "Menthe Gingembre & Citron", category: "hot", subcategory: "Thés", prices: { small: 3.20, medium: 3.90, large: 4.60 } },
+      { id: 316, name: "Épicé", category: "hot", subcategory: "Chai Latte", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 317, name: "Noisette", category: "hot", subcategory: "Chai Latte", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 318, name: "Vanille", category: "hot", subcategory: "Chai Latte", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 319, name: "Caramel", category: "hot", subcategory: "Chai Latte", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 320, name: "Pain d'épices", category: "hot", subcategory: "Chai Latte", prices: { small: 4.20, medium: 5.20, large: 6.20 } },
+      // === CAFÉ GLACÉ ===
+      { id: 401, name: "Iced Americano", category: "iced", subcategory: "Café Glacé", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 402, name: "Cold Brew", category: "iced", subcategory: "Café Glacé", prices: { small: 3.80, medium: 4.80, large: 5.80 } },
+      { id: 403, name: "Cold Brew Latte", category: "iced", subcategory: "Café Glacé", prices: { small: 4.20, medium: 5.20, large: 6.20 } },
+      { id: 404, name: "Iced Latte", category: "iced", subcategory: "Café Glacé", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 405, name: "Iced Latte Vanille", category: "iced", subcategory: "Café Glacé", prices: { small: 4.30, medium: 5.30, large: 6.30 } },
+      { id: 406, name: "Iced Latte Caramel", category: "iced", subcategory: "Café Glacé", prices: { small: 4.30, medium: 5.30, large: 6.30 } },
+      { id: 407, name: "Iced Latte Noisette", category: "iced", subcategory: "Café Glacé", prices: { small: 4.30, medium: 5.30, large: 6.30 } },
+      { id: 408, name: "Iced Latte Brown Sugar", category: "iced", subcategory: "Café Glacé", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 409, name: "Iced Latte Mocha", category: "iced", subcategory: "Café Glacé", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 410, name: "Iced Latte Mocha Blanc", category: "iced", subcategory: "Café Glacé", prices: { small: 4.50, medium: 5.50, large: 6.50 } }
+    ];
+
+    const categoryLabels = { hot: '☕ Chaud', cold: '🧊 Froid', iced: '🧋 Glacé', food: '🥪 Food' };
+
+    const statusLabels = {
+      pending: '⏳ En attente',
+      confirmed: '✓ Confirmée',
+      preparing: '🔥 En préparation',
+      ready: '✅ Prête',
+      collected: '📦 Récupérée'
+    };
+
+    const statusActions = {
+      pending: { next: 'confirmed', label: 'Confirmer', color: '#2563EB' },
+      confirmed: { next: 'preparing', label: 'En préparation', color: '#4338CA' },
+      preparing: { next: 'ready', label: 'Prête', color: '#059669' },
+      ready: { next: 'collected', label: 'Récupérée', color: '#6B7280' }
+    };
+
+    // ===== AUTH =====
+    function renderLogin() {
+      document.getElementById('app').innerHTML = `
+        <div style="max-width: 380px; margin: 80px auto; padding: 32px;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <img src="images/gobelet_coffee_beanz.png" alt="BEANZ" style="width:40px; height:56px; object-fit:contain; margin: 0 auto 8px;">
+            <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a;">BEANZ Admin</h1>
+            <p style="font-size: 13px; color: #9ca3af; margin-top: 4px;">Espace réservé au staff</p>
+          </div>
+          <div id="loginError" style="display:none; background:#FEE2E2; color:#991B1B; padding:10px 14px; border-radius:10px; font-size:12px; margin-bottom:14px;"></div>
+          <div style="margin-bottom: 12px;">
+            <input id="adminPseudo" type="text" placeholder="Pseudo admin" style="width:100%; padding:12px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none;">
+          </div>
+          <div style="margin-bottom: 20px;">
+            <input id="adminPassword" type="password" placeholder="Mot de passe" style="width:100%; padding:12px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none;">
+          </div>
+          <button id="adminLoginBtn" onclick="adminLogin()" style="width:100%; padding:14px; border-radius:50px; background:#1a1a1a; color:white; font-weight:700; font-size:14px; border:none; cursor:pointer;">
+            Connexion Admin
+          </button>
+        </div>
+      `;
+    }
+
+    async function adminLogin() {
+      const pseudo = document.getElementById('adminPseudo').value.trim();
+      const password = document.getElementById('adminPassword').value;
+      const errorEl = document.getElementById('loginError');
+      const btn = document.getElementById('adminLoginBtn');
+
+      if (!pseudo || !password) {
+        errorEl.textContent = 'Remplis tous les champs';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.textContent = 'Connexion...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(API_URL + '/auth/connexion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pseudo, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorEl.textContent = data.error || 'Erreur';
+          errorEl.style.display = 'block';
+          btn.textContent = 'Connexion Admin';
+          btn.disabled = false;
+          return;
+        }
+
+        // Vérifier que c'est bien un admin (décodage simple du JWT)
+        const payload = JSON.parse(atob(data.token.split('.')[1]));
+        if (payload.role !== 'admin') {
+          errorEl.textContent = 'Ce compte n\'est pas administrateur';
+          errorEl.style.display = 'block';
+          btn.textContent = 'Connexion Admin';
+          btn.disabled = false;
+          return;
+        }
+
+        authToken = data.token;
+        localStorage.setItem('beanz_admin_token', data.token);
+        renderDashboard();
+
+      } catch (err) {
+        errorEl.textContent = 'Serveur injoignable';
+        errorEl.style.display = 'block';
+        btn.textContent = 'Connexion Admin';
+        btn.disabled = false;
+      }
+    }
+
+    function adminLogout() {
+      localStorage.removeItem('beanz_admin_token');
+      authToken = null;
+      if (scannerInstance) { scannerInstance.stop().catch(() => {}); scannerInstance = null; }
+      renderLogin();
+    }
+
+    // ===== DASHBOARD =====
+    async function renderDashboard() {
+      await loadOrders();
+      renderApp();
+    }
+
+    async function loadOrders() {
+      try {
+        const url = filterStatus
+          ? API_URL + '/admin/orders?status=' + filterStatus
+          : API_URL + '/admin/orders';
+        const res = await fetch(url, {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) { adminLogout(); return; }
+          return;
+        }
+        const data = await res.json();
+        orders = data.orders || [];
+      } catch (err) {
+        console.error('Erreur chargement commandes:', err);
+      }
+    }
+
+    function renderApp() {
+      const activeOrders = orders.filter(o => o.status !== 'collected');
+      const todayCount = orders.length;
+      const pendingCount = orders.filter(o => o.status === 'pending').length;
+      const readyCount = orders.filter(o => o.status === 'ready').length;
+
+      document.getElementById('app').innerHTML = `
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="images/gobelet_coffee_beanz.png" alt="BEANZ" style="width:30px; height:42px; object-fit:contain;">
+              <div>
+                <h1 style="font-size:22px; font-weight:700; color:#1a1a1a;">BEANZ Admin</h1>
+                <p style="font-size:12px; color:#9ca3af;">Dashboard de gestion</p>
+              </div>
+            </div>
+          <button onclick="adminLogout()" style="padding:8px 16px; border-radius:50px; background:#f3f4f6; border:none; font-size:12px; font-weight:600; color:#6B7280; cursor:pointer;">Déconnexion</button>
+        </div>
+
+        <!-- Stats rapides -->
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:20px;">
+          <div style="background:white; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#1a1a1a;">${todayCount}</p>
+            <p style="font-size:11px; color:#9ca3af;">Commandes</p>
+          </div>
+          <div style="background:#FEF3C7; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#92400E;">${pendingCount}</p>
+            <p style="font-size:11px; color:#92400E;">En attente</p>
+          </div>
+          <div style="background:#D1FAE5; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#065F46;">${readyCount}</p>
+            <p style="font-size:11px; color:#065F46;">Prêtes</p>
+          </div>
+        </div>
+
+        <!-- Onglets -->
+        <div style="display:flex; gap:8px; margin-bottom:16px; background:white; border-radius:50px; padding:4px;">
+          <button onclick="switchTab('orders')" class="tab-btn ${currentTab === 'orders' ? 'tab-active' : 'tab-inactive'}" style="flex:1;">Commandes</button>
+          <button onclick="switchTab('scanner')" class="tab-btn ${currentTab === 'scanner' ? 'tab-active' : 'tab-inactive'}" style="flex:1;">Scanner QR</button>
+        </div>
+
+        <!-- Contenu -->
+        <div id="tabContent"></div>
+      `;
+
+      if (currentTab === 'orders') renderOrdersTab();
+      else renderScannerTab();
+    }
+
+    function switchTab(tab) {
+      // Arrêter le scanner si on quitte l'onglet
+      if (currentTab === 'scanner' && scannerInstance) {
+        scannerInstance.stop().catch(() => {});
+        scannerInstance = null;
+      }
+      currentTab = tab;
+      renderApp();
+    }
+
+    // ===== ONGLET COMMANDES =====
+    function renderOrdersTab() {
+      const filters = ['', 'pending', 'confirmed', 'preparing', 'ready', 'collected'];
+      const filterLabels = { '': 'Toutes', pending: 'En attente', confirmed: 'Confirmées', preparing: 'Préparation', ready: 'Prêtes', collected: 'Récupérées' };
+
+      const filtersHtml = filters.map(f => `
+        <button onclick="setFilter('${f}')" class="tab-btn ${filterStatus === f ? 'tab-active' : 'tab-inactive'}" style="font-size:11px; padding:6px 12px;">
+          ${filterLabels[f]}
+        </button>
+      `).join('');
+
+      const ordersHtml = orders.length === 0
+        ? `<div style="text-align:center; padding:40px; color:#9ca3af;"><p>Aucune commande</p></div>`
+        : orders.map(order => {
+            const user = order.users || {};
+            const action = statusActions[order.status];
+            const itemsList = (order.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ');
+            const time = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+            return `
+              <div class="order-card">
+                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+                  <div>
+                    <p style="font-size:14px; font-weight:700; color:#1a1a1a;">${user.prenom || '?'} @${user.pseudo || '?'}</p>
+                    <p style="font-size:11px; color:#9ca3af;">${time} · ${user.card_number || ''}</p>
+                  </div>
+                  <span class="status-badge status-${order.status}">${statusLabels[order.status]}</span>
+                </div>
+                <p style="font-size:12px; color:#4b5563; margin-bottom:8px;">${itemsList}</p>
+                ${order.note ? `<p style="font-size:11px; color:#9ca3af; font-style:italic; margin-bottom:8px;">📝 ${order.note}</p>` : ''}
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <p style="font-size:16px; font-weight:700; color:#1a1a1a;">${Number(order.total).toFixed(2)}€</p>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <span style="font-size:11px; color:#22c55e; font-weight:600;">+${order.points_earned} pts</span>
+                    ${action ? `<button class="action-btn" onclick="updateOrderStatus('${order.id}', '${action.next}')" style="background:${action.color}; color:white;">${action.label}</button>` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:4px;">
+          ${filtersHtml}
+        </div>
+        <button onclick="loadOrders().then(renderApp)" style="width:100%; padding:10px; border-radius:10px; background:white; border:1.5px solid #e5e7eb; font-size:12px; font-weight:600; color:#1a1a1a; cursor:pointer; margin-bottom:14px;">↻ Rafraîchir</button>
+        ${ordersHtml}
+      `;
+    }
+
+    async function setFilter(status) {
+      filterStatus = status;
+      await loadOrders();
+      renderApp();
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+      try {
+        const res = await fetch(API_URL + '/admin/orders/' + orderId + '/status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        if (res.ok) {
+          await loadOrders();
+          renderApp();
+        }
+      } catch (err) {
+        console.error('Erreur update statut:', err);
+      }
+    }
+
+    // ===== ONGLET SCANNER =====
+    function renderScannerTab() {
+      document.getElementById('tabContent').innerHTML = `
+        <div style="text-align:center; margin-bottom:16px;">
+          <p style="font-size:14px; font-weight:600; color:#1a1a1a;">Scanner le QR code client</p>
+          <p style="font-size:12px; color:#9ca3af;">Pointez la caméra vers le QR code du client</p>
+        </div>
+        <div id="reader"></div>
+        <div id="scanResult"></div>
+      `;
+
+      // Démarrer le scanner
+      setTimeout(() => {
+        scannerInstance = new Html5Qrcode("reader");
+        scannerInstance.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onScanSuccess,
+          () => {} // Ignorer les erreurs de scan
+        ).catch(err => {
+          document.getElementById('scanResult').innerHTML = `
+            <div style="text-align:center; padding:20px; color:#991B1B; background:#FEE2E2; border-radius:12px; margin-top:16px;">
+              <p style="font-size:13px;">Impossible d'accéder à la caméra</p>
+              <p style="font-size:11px; margin-top:4px;">Vérifie les permissions du navigateur</p>
+            </div>
+          `;
+        });
+      }, 100);
+    }
+
+    async function onScanSuccess(decodedText) {
+      // Arrêter le scanner après un scan réussi
+      if (scannerInstance) {
+        scannerInstance.stop().catch(() => {});
+        scannerInstance = null;
+      }
+
+      try {
+        const qrData = JSON.parse(decodedText);
+
+        const res = await fetch(API_URL + '/admin/scan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify({ userId: qrData.userId, pseudo: qrData.pseudo })
+        });
+
+        if (!res.ok) {
+          document.getElementById('scanResult').innerHTML = `
+            <div style="text-align:center; padding:20px; color:#991B1B; background:#FEE2E2; border-radius:12px; margin-top:16px;">
+              Client non trouvé
+            </div>
+          `;
+          return;
+        }
+
+        const data = await res.json();
+        scannedClient = data;
+        renderScannedClient();
+
+      } catch (err) {
+        document.getElementById('scanResult').innerHTML = `
+          <div style="text-align:center; padding:20px; color:#991B1B; background:#FEE2E2; border-radius:12px; margin-top:16px;">
+            QR code invalide
+          </div>
+        `;
+      }
+    }
+
+    function renderScannedClient() {
+      if (!scannedClient) return;
+      const client = scannedClient.client;
+      const clientOrders = scannedClient.orders || [];
+
+      const ordersHtml = clientOrders.length === 0
+        ? `<p style="text-align:center; color:#9ca3af; font-size:13px; padding:16px;">Aucune commande active</p>`
+        : clientOrders.map(order => {
+            const action = statusActions[order.status];
+            const itemsList = (order.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ');
+            return `
+              <div style="padding:12px; border:1.5px solid #e5e7eb; border-radius:12px; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                  <span style="font-size:13px; font-weight:600; color:#1a1a1a;">${Number(order.total).toFixed(2)}€</span>
+                  <span class="status-badge status-${order.status}">${statusLabels[order.status]}</span>
+                </div>
+                <p style="font-size:11px; color:#4b5563; margin-bottom:8px;">${itemsList}</p>
+                ${action ? `<button class="action-btn" onclick="updateOrderStatus('${order.id}', '${action.next}').then(() => { switchTab('scanner'); })" style="background:${action.color}; color:white; width:100%;">${action.label}</button>` : ''}
+              </div>
+            `;
+          }).join('');
+
+      document.getElementById('scanResult').innerHTML = `
+        <div class="client-card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div>
+              <p style="font-size:16px; font-weight:700; color:#1a1a1a;">${client.prenom} @${client.pseudo}</p>
+              <p style="font-size:11px; color:#9ca3af;">Membre depuis ${client.member_since} · ${client.card_number}</p>
+            </div>
+            <div style="text-align:right;">
+              <p style="font-size:18px; font-weight:700; color:#1a1a1a;">${client.points}</p>
+              <p style="font-size:10px; color:#9ca3af;">Beanz</p>
+            </div>
+          </div>
+
+          <!-- Bouton Ajouter commande sur place -->
+          <button onclick="openInstoreModal()" style="width:100%; padding:14px; border-radius:12px; background:#22c55e; border:none; font-size:14px; font-weight:700; color:white; cursor:pointer; margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Ajouter une commande sur place
+          </button>
+
+          <h3 style="font-size:13px; font-weight:700; color:#1a1a1a; margin-bottom:8px;">Commandes actives</h3>
+          ${ordersHtml}
+
+          <button onclick="scannedClient=null; switchTab('scanner');" style="width:100%; padding:12px; border-radius:50px; background:#f3f4f6; border:none; font-size:13px; font-weight:600; color:#1a1a1a; cursor:pointer; margin-top:12px;">
+            Scanner un autre client
+          </button>
+        </div>
+      `;
+    }
+
+    // ===== COMMANDE SUR PLACE =====
+
+    function openInstoreModal() {
+      showInstoreModal = true;
+      instoreCart = [];
+      instoreCategory = 'hot';
+      renderInstoreModal();
+    }
+
+    function closeInstoreModal() {
+      showInstoreModal = false;
+      document.getElementById('instoreModal')?.remove();
+    }
+
+    function renderInstoreModal() {
+      // Supprimer l'ancien modal s'il existe
+      document.getElementById('instoreModal')?.remove();
+
+      const client = scannedClient?.client;
+      if (!client) return;
+
+      // Filtrer les produits par catégorie
+      const filteredProducts = products.filter(p => p.category === instoreCategory);
+
+      // Grouper par sous-catégorie
+      const grouped = {};
+      filteredProducts.forEach(p => {
+        if (!grouped[p.subcategory]) grouped[p.subcategory] = [];
+        grouped[p.subcategory].push(p);
+      });
+
+      // Calculer le total du panier
+      const total = instoreCart.reduce((sum, item) => sum + item.price, 0);
+      const pointsToEarn = Math.floor(total * 4);
+
+      // HTML des catégories
+      const categoriesHtml = Object.keys(categoryLabels).map(cat => `
+        <button onclick="instoreCategory='${cat}'; renderInstoreModal();" style="padding:8px 14px; border-radius:50px; font-size:12px; font-weight:600; border:none; cursor:pointer; white-space:nowrap; ${instoreCategory === cat ? 'background:#1a1a1a; color:white;' : 'background:#f3f4f6; color:#4b5563;'}">
+          ${categoryLabels[cat]}
+        </button>
+      `).join('');
+
+      // HTML des produits groupés
+      let productsHtml = '';
+      for (const [subcat, prods] of Object.entries(grouped)) {
+        productsHtml += `<p style="font-size:11px; font-weight:700; color:#9ca3af; margin:12px 0 6px; text-transform:uppercase;">${subcat}</p>`;
+        productsHtml += prods.map(p => `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid #f3f4f6;">
+            <div style="flex:1;">
+              <p style="font-size:13px; font-weight:600; color:#1a1a1a;">${p.name}</p>
+              <p style="font-size:11px; color:#9ca3af;">S: ${p.prices.small.toFixed(2)}€ · M: ${p.prices.medium.toFixed(2)}€ · L: ${p.prices.large.toFixed(2)}€</p>
+            </div>
+            <div style="display:flex; gap:4px;">
+              <button onclick="addToInstoreCart(${p.id}, 'small')" style="width:28px; height:28px; border-radius:6px; border:1.5px solid #e5e7eb; background:white; font-size:10px; font-weight:700; cursor:pointer;">S</button>
+              <button onclick="addToInstoreCart(${p.id}, 'medium')" style="width:28px; height:28px; border-radius:6px; border:1.5px solid #1a1a1a; background:#1a1a1a; color:white; font-size:10px; font-weight:700; cursor:pointer;">M</button>
+              <button onclick="addToInstoreCart(${p.id}, 'large')" style="width:28px; height:28px; border-radius:6px; border:1.5px solid #e5e7eb; background:white; font-size:10px; font-weight:700; cursor:pointer;">L</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // HTML du panier
+      const cartHtml = instoreCart.length === 0
+        ? `<p style="text-align:center; color:#9ca3af; font-size:12px; padding:12px;">Panier vide</p>`
+        : instoreCart.map((item, index) => `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f3f4f6;">
+              <div>
+                <span style="font-size:12px; font-weight:600; color:#1a1a1a;">${item.name}</span>
+                <span style="font-size:10px; color:#9ca3af; margin-left:6px;">${item.size.toUpperCase()}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:12px; font-weight:600; color:#1a1a1a;">${item.price.toFixed(2)}€</span>
+                <button onclick="removeFromInstoreCart(${index})" style="width:22px; height:22px; border-radius:50%; border:none; background:#fee2e2; color:#991b1b; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>
+              </div>
+            </div>
+          `).join('');
+
+      const modalHtml = `
+        <div id="instoreModal" style="position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; padding:16px;">
+          <div style="background:white; border-radius:20px; width:100%; max-width:500px; max-height:90vh; display:flex; flex-direction:column; overflow:hidden;">
+            
+            <!-- Header -->
+            <div style="padding:16px; border-bottom:1px solid #f3f4f6; flex-shrink:0;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <h2 style="font-size:16px; font-weight:700; color:#1a1a1a;">Commande sur place</h2>
+                <button onclick="closeInstoreModal()" style="width:32px; height:32px; border-radius:50%; border:none; background:#f3f4f6; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">×</button>
+              </div>
+              <p style="font-size:12px; color:#9ca3af;">Pour ${client.prenom} @${client.pseudo}</p>
+            </div>
+
+            <!-- Catégories -->
+            <div style="padding:12px 16px; display:flex; gap:8px; overflow-x:auto; flex-shrink:0; border-bottom:1px solid #f3f4f6;">
+              ${categoriesHtml}
+            </div>
+
+            <!-- Produits (scrollable) -->
+            <div style="flex:1; overflow-y:auto; padding:0 16px;">
+              ${productsHtml}
+            </div>
+
+            <!-- Panier -->
+            <div style="border-top:2px solid #f3f4f6; padding:12px 16px; flex-shrink:0; background:#fafafa;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:13px; font-weight:700; color:#1a1a1a;">Panier (${instoreCart.length})</span>
+                ${instoreCart.length > 0 ? `<button onclick="instoreCart=[]; renderInstoreModal();" style="font-size:11px; color:#991b1b; background:none; border:none; cursor:pointer;">Vider</button>` : ''}
+              </div>
+              <div style="max-height:120px; overflow-y:auto;">
+                ${cartHtml}
+              </div>
+              ${instoreCart.length > 0 ? `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:12px; border-top:1px solid #e5e7eb;">
+                  <div>
+                    <p style="font-size:18px; font-weight:700; color:#1a1a1a;">${total.toFixed(2)}€</p>
+                    <p style="font-size:11px; color:#22c55e; font-weight:600;">+${pointsToEarn} Beanz</p>
+                  </div>
+                  <button id="confirmInstoreBtn" onclick="confirmInstoreOrder()" style="padding:14px 28px; border-radius:50px; background:#22c55e; border:none; color:white; font-size:14px; font-weight:700; cursor:pointer;">
+                    Valider la commande
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+
+          </div>
+        </div>
+      `;
+
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    function addToInstoreCart(productId, size) {
+      const product = products.find(p => p.id === productId);
+      if (!product) return;
+
+      instoreCart.push({
+        id: product.id,
+        name: product.name,
+        size: size,
+        price: product.prices[size],
+        quantity: 1,
+        subcategory: product.subcategory
+      });
+
+      renderInstoreModal();
+    }
+
+    function removeFromInstoreCart(index) {
+      instoreCart.splice(index, 1);
+      renderInstoreModal();
+    }
+
+    async function confirmInstoreOrder() {
+      if (instoreCart.length === 0 || !scannedClient) return;
+
+      const btn = document.getElementById('confirmInstoreBtn');
+      if (btn) {
+        btn.textContent = 'Envoi...';
+        btn.disabled = true;
+      }
+
+      const total = instoreCart.reduce((sum, item) => sum + item.price, 0);
+
+      try {
+        const res = await fetch(API_URL + '/admin/orders/instore', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify({
+            userId: scannedClient.client.id,
+            items: instoreCart,
+            total: total
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert('Erreur: ' + (data.error || 'Impossible de créer la commande'));
+          if (btn) { btn.textContent = 'Valider la commande'; btn.disabled = false; }
+          return;
+        }
+
+        // Succès — mettre à jour les points du client localement
+        scannedClient.client.points = data.newBalance;
+
+        // Fermer le modal et afficher confirmation
+        closeInstoreModal();
+
+        // Afficher un message de succès temporaire
+        const successHtml = `
+          <div id="instoreSuccess" style="position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:9999; background:#22c55e; color:white; padding:14px 24px; border-radius:12px; font-size:14px; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+            ✓ Commande créée · +${data.pointsEarned} Beanz ajoutés
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', successHtml);
+        setTimeout(() => document.getElementById('instoreSuccess')?.remove(), 3000);
+
+        // Re-render le client avec les nouveaux points
+        renderScannedClient();
+
+      } catch (err) {
+        console.error('Erreur commande instore:', err);
+        alert('Erreur réseau');
+        if (btn) { btn.textContent = 'Valider la commande'; btn.disabled = false; }
+      }
+    }
+
+    // ===== INIT =====
+    async function init() {
+      if (!authToken) {
+        renderLogin();
+        return;
+      }
+      // Vérifier que le token est valide et admin
+      try {
+        const payload = JSON.parse(atob(authToken.split('.')[1]));
+        if (payload.role !== 'admin') { adminLogout(); return; }
+        renderDashboard();
+      } catch (err) {
+        adminLogout();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
