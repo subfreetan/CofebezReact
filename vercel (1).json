@@ -1,0 +1,19 @@
+{
+  "rewrites": [
+    {
+      "source": "/.well-known/apple-developer-merchantid-domain-association",
+      "destination": "/apple-developer-merchantid-domain-association.txt"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/.well-known/(.*)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/plain"
+        }
+      ]
+    }
+  ]
+}
