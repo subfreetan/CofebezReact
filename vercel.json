@@ -1,19 +1,8 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/.well-known/apple-developer-merchantid-domain-association",
-      "destination": "/.well-known/apple-developer-merchantid-domain-association"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/.well-known/apple-developer-merchantid-domain-association",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/plain"
-        }
-      ]
+      "src": "/.well-known/apple-developer-merchantid-domain-association",
+      "dest": "/apple-pay-verification"
     }
   ]
 }
