@@ -1,8 +1,0 @@
-{
-  "routes": [
-    {
-      "src": "/.well-known/apple-developer-merchantid-domain-association",
-      "dest": "/apple-pay-verification"
-    }
-  ]
-}
