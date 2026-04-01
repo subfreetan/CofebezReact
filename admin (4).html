@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BEANZ Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { font-family: 'DM Sans', sans-serif; box-sizing: border-box; }
+    body { background: #f3f4f6; margin: 0; min-height: 100vh; }
+
+    .status-badge { padding: 4px 10px; border-radius: 50px; font-size: 11px; font-weight: 700; }
+    .status-pending { background: #FEF3C7; color: #92400E; }
+    .status-confirmed { background: #DBEAFE; color: #1E40AF; }
+    .status-preparing { background: #E0E7FF; color: #4338CA; }
+    .status-ready { background: #D1FAE5; color: #065F46; }
+    .status-collected { background: #E5E7EB; color: #6B7280; }
+
+    .order-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: all 0.2s; }
+    .order-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+    .action-btn { padding: 8px 16px; border-radius: 50px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; }
+    .action-btn:hover { transform: scale(1.03); }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .tab-btn { padding: 8px 12px; border-radius: 50px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; }
+    .tab-active { background: #1a1a1a; color: white; }
+    .tab-inactive { background: transparent; color: #9ca3af; }
+
+    #reader { width: 100%; max-width: 400px; margin: 0 auto; }
+    #reader video { border-radius: 12px; }
+
+    .client-card { background: white; border-radius: 16px; padding: 20px; margin-top: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+    .stat-card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .stat-card h3 { font-size: 12px; color: #9ca3af; margin: 0 0 8px 0; font-weight: 600; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: #1a1a1a; }
+    .stat-card .sub { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+
+    .chart-container { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .chart-container h3 { font-size: 14px; font-weight: 700; color: #1a1a1a; margin: 0 0 12px 0; }
+
+    .ranking-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+    .ranking-item:last-child { border-bottom: none; }
+    .ranking-position { width: 24px; height: 24px; border-radius: 50%; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #6b7280; margin-right: 12px; }
+
+    .form-input { width: 100%; padding: 12px 14px; border: 1.5px solid #e5e7eb; border-radius: 12px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+    .form-input:focus { border-color: #1a1a1a; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal-content { background: white; border-radius: 20px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+
+    .notification-item, .event-item { background: white; border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  </style>
+</head>
+<body>
+  <div id="app" style="max-width: 800px; margin: 0 auto; padding: 16px;"></div>
+
+  <script>
+    // ===== CONFIG =====
+    const API_URL = 'https://cofebezreact-production.up.railway.app/api';
+    let authToken = localStorage.getItem('beanz_admin_token') || null;
+    let currentTab = 'dashboard'; // 'dashboard' | 'orders' | 'scanner'
+    let filterStatus = '';
+    let orders = [];
+    let allOrdersHistory = []; // Toutes les commandes pour les stats
+    let scannedClient = null;
+    let scannerInstance = null;
+    let notifications = JSON.parse(localStorage.getItem('beanz_notifications') || '[]');
+    let events = JSON.parse(localStorage.getItem('beanz_events') || '[]');
+
+    // State pour commande sur place
+    let showInstoreModal = false;
+    let instoreCart = [];
+    let instoreCategory = 'hot';
+
+    // State pour modals
+    let showNotificationModal = false;
+    let showEventModal = false;
+    let editingNotification = null;
+    let editingEvent = null;
+
+    // Dashboard state
+    let dashboardPeriod = 'month'; // 'day' | 'month' | 'hour'
+    let selectedMonth = new Date().getMonth();
+    let selectedYear = 2026;
+
+    // State pour popup stats produit
+    let showProductStatsPopup = false;
+    let selectedProductStats = null;
+
+    // Produits disponibles (catalogue complet identique au client)
+    const products = [
+      // === FOOD ===
+      // Panini
+      { id: 101, name: "Mamma Mia", category: "food", subcategory: "Panini", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 102, name: "Ham & Cheese", category: "food", subcategory: "Panini", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 103, name: "Thon", category: "food", subcategory: "Panini", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 104, name: "French Cheese", category: "food", subcategory: "Panini", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 105, name: "Chicken", category: "food", subcategory: "Panini", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 106, name: "Salmon", category: "food", subcategory: "Panini", prices: { small: 6.00, medium: 7.00, large: 8.00 } },
+      // Bagel
+      { id: 107, name: "Healthy Cheese", category: "food", subcategory: "Bagel", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 108, name: "Ham & Cheese", category: "food", subcategory: "Bagel", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 109, name: "Salmon & Cream", category: "food", subcategory: "Bagel", prices: { small: 6.00, medium: 7.00, large: 8.00 } },
+      // Wrap
+      { id: 110, name: "Chicken", category: "food", subcategory: "Wrap", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      // Sandwichs
+      { id: 111, name: "Healthy Cheese", category: "food", subcategory: "Sandwichs", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 112, name: "Mamma Mia", category: "food", subcategory: "Sandwichs", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 113, name: "Ham & Cheese", category: "food", subcategory: "Sandwichs", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 114, name: "Thon", category: "food", subcategory: "Sandwichs", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 115, name: "Frenchy", category: "food", subcategory: "Sandwichs", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 116, name: "Fish & Cream", category: "food", subcategory: "Sandwichs", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      // Toast
+      { id: 117, name: "Healthy Cheese", category: "food", subcategory: "Toast", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 118, name: "Ham & Cheese", category: "food", subcategory: "Toast", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 119, name: "Salmon & Cream", category: "food", subcategory: "Toast", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      
+      // === BOISSONS FROIDES ===
+      // Jus & Smoothie
+      { id: 201, name: "Orange", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 202, name: "Ananas", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 203, name: "Mangue", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 204, name: "Fraise", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 205, name: "Fruits des bois", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 206, name: "Mangue Banane", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 207, name: "Fraise Ananas", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 208, name: "Mangue Menthe", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 209, name: "Mangue Fraise Banane", category: "cold", subcategory: "Jus & Smoothie", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      // Mojitos
+      { id: 210, name: "Citron", category: "cold", subcategory: "Mojitos", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 211, name: "Fraise", category: "cold", subcategory: "Mojitos", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 212, name: "Violette", category: "cold", subcategory: "Mojitos", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      // Iced Tea
+      { id: 213, name: "Lemon", category: "cold", subcategory: "Iced Tea", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 214, name: "Spicy Peach", category: "cold", subcategory: "Iced Tea", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 215, name: "Coco-Mango", category: "cold", subcategory: "Iced Tea", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      // Milkshake
+      { id: 216, name: "Bueno", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 217, name: "M&M'S", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 218, name: "Oreo", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 219, name: "Ferrero Rocher", category: "cold", subcategory: "Milkshake", prices: { small: 5.50, medium: 6.50, large: 7.50 } },
+      { id: 220, name: "Cookies", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 221, name: "Brownies", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 222, name: "Snickers", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 223, name: "Speculoos", category: "cold", subcategory: "Milkshake", prices: { small: 5.00, medium: 6.00, large: 7.00 } },
+      { id: 224, name: "Caramel", category: "cold", subcategory: "Milkshake", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 225, name: "Café", category: "cold", subcategory: "Milkshake", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 226, name: "Vanille", category: "cold", subcategory: "Milkshake", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 227, name: "Fraise", category: "cold", subcategory: "Milkshake", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 228, name: "Banane", category: "cold", subcategory: "Milkshake", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 229, name: "Royal", category: "cold", subcategory: "Milkshake", prices: { small: 6.00, medium: 7.00, large: 8.00 } },
+      { id: 230, name: "Sahari", category: "cold", subcategory: "Milkshake", prices: { small: 6.00, medium: 7.00, large: 8.00 } },
+
+      // === BOISSONS CHAUDES ===
+      // Cafés
+      { id: 301, name: "Expresso", category: "hot", subcategory: "Cafés", prices: { small: 2.20, medium: 2.80, large: 3.40 } },
+      { id: 302, name: "Black Coffee", category: "hot", subcategory: "Cafés", prices: { small: 2.50, medium: 3.20, large: 3.80 } },
+      { id: 303, name: "Americano", category: "hot", subcategory: "Cafés", prices: { small: 2.80, medium: 3.50, large: 4.20 } },
+      { id: 304, name: "Cortado", category: "hot", subcategory: "Cafés", prices: { small: 3.00, medium: 3.70, large: 4.40 } },
+      { id: 305, name: "Flat White", category: "hot", subcategory: "Cafés", prices: { small: 3.90, medium: 4.90, large: 5.90 } },
+      { id: 306, name: "Cappuccino", category: "hot", subcategory: "Cafés", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 307, name: "Cafe Latte", category: "hot", subcategory: "Cafés", prices: { small: 3.80, medium: 4.80, large: 5.80 } },
+      { id: 308, name: "Chocolat Chaud", category: "hot", subcategory: "Cafés", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 309, name: "Café Mocha", category: "hot", subcategory: "Cafés", prices: { small: 4.20, medium: 5.20, large: 6.20 } },
+      { id: 310, name: "Café Mocha Blanc", category: "hot", subcategory: "Cafés", prices: { small: 4.20, medium: 5.20, large: 6.20 } },
+      // Thés
+      { id: 311, name: "English Tea", category: "hot", subcategory: "Thés", prices: { small: 2.50, medium: 3.20, large: 3.80 } },
+      { id: 312, name: "Menthe", category: "hot", subcategory: "Thés", prices: { small: 2.50, medium: 3.20, large: 3.80 } },
+      { id: 313, name: "Menthe Gingembre", category: "hot", subcategory: "Thés", prices: { small: 3.00, medium: 3.70, large: 4.40 } },
+      { id: 314, name: "Menthe Citron", category: "hot", subcategory: "Thés", prices: { small: 3.00, medium: 3.70, large: 4.40 } },
+      { id: 315, name: "Menthe Gingembre & Citron", category: "hot", subcategory: "Thés", prices: { small: 3.20, medium: 3.90, large: 4.60 } },
+      // Chai Latte
+      { id: 316, name: "Épicé", category: "hot", subcategory: "Chai Latte", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 317, name: "Noisette", category: "hot", subcategory: "Chai Latte", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 318, name: "Vanille", category: "hot", subcategory: "Chai Latte", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 319, name: "Caramel", category: "hot", subcategory: "Chai Latte", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 320, name: "Pain d'épices", category: "hot", subcategory: "Chai Latte", prices: { small: 4.20, medium: 5.20, large: 6.20 } },
+
+      // === CAFÉ GLACÉ ===
+      { id: 401, name: "Iced Americano", category: "iced", subcategory: "Café Glacé", prices: { small: 3.50, medium: 4.50, large: 5.50 } },
+      { id: 402, name: "Cold Brew", category: "iced", subcategory: "Café Glacé", prices: { small: 3.80, medium: 4.80, large: 5.80 } },
+      { id: 403, name: "Cold Brew Latte", category: "iced", subcategory: "Café Glacé", prices: { small: 4.20, medium: 5.20, large: 6.20 } },
+      { id: 404, name: "Iced Latte", category: "iced", subcategory: "Café Glacé", prices: { small: 4.00, medium: 5.00, large: 6.00 } },
+      { id: 405, name: "Iced Latte Vanille", category: "iced", subcategory: "Café Glacé", prices: { small: 4.30, medium: 5.30, large: 6.30 } },
+      { id: 406, name: "Iced Latte Caramel", category: "iced", subcategory: "Café Glacé", prices: { small: 4.30, medium: 5.30, large: 6.30 } },
+      { id: 407, name: "Iced Latte Noisette", category: "iced", subcategory: "Café Glacé", prices: { small: 4.30, medium: 5.30, large: 6.30 } },
+      { id: 408, name: "Iced Latte Brown Sugar", category: "iced", subcategory: "Café Glacé", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 409, name: "Iced Latte Mocha", category: "iced", subcategory: "Café Glacé", prices: { small: 4.50, medium: 5.50, large: 6.50 } },
+      { id: 410, name: "Iced Latte Mocha Blanc", category: "iced", subcategory: "Café Glacé", prices: { small: 4.50, medium: 5.50, large: 6.50 } }
+    ];
+
+    const statusLabels = { pending: 'En attente', confirmed: 'Confirmée', preparing: 'En préparation', ready: 'Prête', collected: 'Récupérée' };
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+    // ===== AUTH =====
+    function renderLogin() {
+      document.getElementById('app').innerHTML = `
+        <div style="max-width: 380px; margin: 80px auto; padding: 32px;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <img src="images/gobelet_coffee_beanz.png" alt="BEANZ" style="width:40px; height:56px; object-fit:contain; margin: 0 auto 8px;">
+            <h1 style="font-size: 24px; font-weight: 700; color: #1a1a1a;">BEANZ Admin</h1>
+            <p style="font-size: 13px; color: #9ca3af; margin-top: 4px;">Espace réservé au staff</p>
+          </div>
+          <div id="loginError" style="display:none; background:#FEE2E2; color:#991B1B; padding:10px 14px; border-radius:10px; font-size:12px; margin-bottom:14px;"></div>
+          <div style="margin-bottom: 12px;">
+            <input id="adminPseudo" type="text" placeholder="Pseudo admin" style="width:100%; padding:12px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none;">
+          </div>
+          <div style="margin-bottom: 20px;">
+            <input id="adminPassword" type="password" placeholder="Mot de passe" style="width:100%; padding:12px; border:1.5px solid #e5e7eb; border-radius:10px; font-size:14px; outline:none;">
+          </div>
+          <button id="adminLoginBtn" onclick="adminLogin()" style="width:100%; padding:14px; border-radius:50px; background:#1a1a1a; color:white; font-weight:700; font-size:14px; border:none; cursor:pointer;">
+            Connexion Admin
+          </button>
+        </div>
+      `;
+    }
+
+    async function adminLogin() {
+      const pseudo = document.getElementById('adminPseudo').value.trim();
+      const password = document.getElementById('adminPassword').value;
+      const errorEl = document.getElementById('loginError');
+      const btn = document.getElementById('adminLoginBtn');
+
+      if (!pseudo || !password) {
+        errorEl.textContent = 'Remplis tous les champs';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.textContent = 'Connexion...';
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(API_URL + '/auth/connexion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pseudo, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorEl.textContent = data.error || 'Erreur';
+          errorEl.style.display = 'block';
+          btn.textContent = 'Connexion Admin';
+          btn.disabled = false;
+          return;
+        }
+
+        // Vérifier que c'est bien un admin
+        const payload = JSON.parse(atob(data.token.split('.')[1]));
+        if (payload.role !== 'admin') {
+          errorEl.textContent = 'Ce compte n\'est pas administrateur';
+          errorEl.style.display = 'block';
+          btn.textContent = 'Connexion Admin';
+          btn.disabled = false;
+          return;
+        }
+
+        authToken = data.token;
+        localStorage.setItem('beanz_admin_token', data.token);
+        renderDashboard();
+
+      } catch (err) {
+        errorEl.textContent = 'Serveur injoignable';
+        errorEl.style.display = 'block';
+        btn.textContent = 'Connexion Admin';
+        btn.disabled = false;
+      }
+    }
+
+    function adminLogout() {
+      authToken = null;
+      localStorage.removeItem('beanz_admin_token');
+      renderLogin();
+    }
+
+    // ===== DASHBOARD =====
+    async function renderDashboard() {
+      await loadOrders();
+      await loadAllOrdersHistory();
+      renderApp();
+    }
+
+    async function loadOrders() {
+      try {
+        const res = await fetch(API_URL + '/admin/orders', {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) { adminLogout(); return; }
+          return;
+        }
+        const data = await res.json();
+        orders = data.orders || [];
+      } catch (err) {
+        console.error('Erreur chargement commandes:', err);
+      }
+    }
+
+    async function loadAllOrdersHistory() {
+      try {
+        const res = await fetch(API_URL + '/admin/orders/history?year=2026', {
+          headers: { 'Authorization': 'Bearer ' + authToken }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          allOrdersHistory = data.orders || [];
+        }
+      } catch (err) {
+        // Fallback: utiliser les commandes du jour
+        allOrdersHistory = orders;
+      }
+    }
+
+    function renderApp() {
+      const activeOrders = orders.filter(o => o.status !== 'collected');
+      const todayCount = orders.length;
+      const pendingCount = orders.filter(o => o.status === 'pending').length;
+      const readyCount = orders.filter(o => o.status === 'ready').length;
+
+      document.getElementById('app').innerHTML = `
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <img src="images/gobelet_coffee_beanz.png" alt="BEANZ" style="width:30px; height:42px; object-fit:contain;">
+            <div>
+              <h1 style="font-size:22px; font-weight:700; color:#1a1a1a;">BEANZ Admin</h1>
+              <p style="font-size:12px; color:#9ca3af;">Dashboard de gestion</p>
+            </div>
+          </div>
+          <button onclick="adminLogout()" style="padding:8px 16px; border-radius:50px; background:#f3f4f6; border:none; font-size:12px; font-weight:600; color:#6B7280; cursor:pointer;">Déconnexion</button>
+        </div>
+
+        <!-- Stats rapides -->
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:20px;">
+          <div style="background:white; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#1a1a1a;">${todayCount}</p>
+            <p style="font-size:11px; color:#9ca3af;">Commandes</p>
+          </div>
+          <div style="background:#FEF3C7; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#92400E;">${pendingCount}</p>
+            <p style="font-size:11px; color:#92400E;">En attente</p>
+          </div>
+          <div style="background:#D1FAE5; border-radius:12px; padding:14px; text-align:center;">
+            <p style="font-size:22px; font-weight:700; color:#065F46;">${readyCount}</p>
+            <p style="font-size:11px; color:#065F46;">Prêtes</p>
+          </div>
+        </div>
+
+        <!-- Onglets -->
+        <div style="display:flex; gap:6px; margin-bottom:16px; background:white; border-radius:50px; padding:4px;">
+          <button onclick="switchTab('dashboard')" class="tab-btn ${currentTab === 'dashboard' ? 'tab-active' : 'tab-inactive'}" style="flex:1;">Tableau de bord</button>
+          <button onclick="switchTab('orders')" class="tab-btn ${currentTab === 'orders' ? 'tab-active' : 'tab-inactive'}" style="flex:1;">Commandes</button>
+          <button onclick="switchTab('scanner')" class="tab-btn ${currentTab === 'scanner' ? 'tab-active' : 'tab-inactive'}" style="flex:1;">Scanner</button>
+        </div>
+
+        <!-- Contenu -->
+        <div id="tabContent"></div>
+      `;
+
+      if (currentTab === 'dashboard') renderDashboardTab();
+      else if (currentTab === 'orders') renderOrdersTab();
+      else renderScannerTab();
+    }
+
+    function switchTab(tab) {
+      if (currentTab === 'scanner' && scannerInstance) {
+        scannerInstance.stop().catch(() => {});
+        scannerInstance = null;
+      }
+      currentTab = tab;
+      renderApp();
+    }
+
+    // ===== ONGLET TABLEAU DE BORD =====
+    function renderDashboardTab() {
+      const stats = calculateStats();
+      
+      document.getElementById('tabContent').innerHTML = `
+        <!-- Sélecteur de période -->
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <select id="monthSelect" onchange="updateDashboardPeriod()" class="form-input" style="flex:1;">
+            ${monthNames.map((m, i) => `<option value="${i}" ${i === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}
+          </select>
+          <select id="yearSelect" onchange="updateDashboardPeriod()" class="form-input" style="width:100px;">
+            <option value="2026" selected>2026</option>
+          </select>
+        </div>
+
+        <!-- Stats principales -->
+        <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-bottom:16px;">
+          <div class="stat-card">
+            <h3>Chiffre d'affaires</h3>
+            <p class="value">${stats.revenue.toFixed(2)}€</p>
+            <p class="sub">${monthNames[selectedMonth]} 2026</p>
+          </div>
+          <div class="stat-card">
+            <h3>Commandes</h3>
+            <p class="value">${stats.totalOrders}</p>
+            <p class="sub">${monthNames[selectedMonth]} 2026</p>
+          </div>
+        </div>
+
+        <!-- Graphique par jour -->
+        <div class="chart-container">
+          <h3>Commandes par jour</h3>
+          <canvas id="dailyChart" height="200"></canvas>
+        </div>
+
+        <!-- Graphique par heure -->
+        <div class="chart-container">
+          <h3>Commandes par heure</h3>
+          <canvas id="hourlyChart" height="180"></canvas>
+        </div>
+
+        <!-- Classements -->
+        <div style="display:grid; grid-template-columns:repeat(1, 1fr); gap:12px; margin-bottom:16px;">
+          <!-- Top boissons chaudes -->
+          <div class="chart-container">
+            <h3>🔥 Top Boissons Chaudes</h3>
+            ${renderRanking(stats.topHotDrinks)}
+          </div>
+
+          <!-- Top boissons froides -->
+          <div class="chart-container">
+            <h3>❄️ Top Boissons Froides</h3>
+            ${renderRanking(stats.topColdDrinks)}
+          </div>
+
+          <!-- Top plats -->
+          <div class="chart-container">
+            <h3>🍽️ Top Plats</h3>
+            ${renderRanking(stats.topFood)}
+          </div>
+        </div>
+
+        <!-- Section Notifications -->
+        <div class="chart-container">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0;">📢 Notifications Client</h3>
+            <button onclick="openNotificationModal()" class="action-btn" style="background:#1a1a1a; color:white; padding:6px 14px; font-size:11px;">+ Ajouter</button>
+          </div>
+          ${notifications.length === 0 ? `
+            <p style="color:#9ca3af; font-size:13px; text-align:center; padding:20px 0;">Aucune notification active</p>
+          ` : notifications.map((n, i) => `
+            <div class="notification-item" style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <p style="font-size:13px; font-weight:600; color:#1a1a1a;">${n.title}</p>
+                <p style="font-size:11px; color:#9ca3af;">${n.message}</p>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button onclick="editNotification(${i})" style="background:#f3f4f6; border:none; padding:6px 10px; border-radius:8px; font-size:11px; cursor:pointer;">Modifier</button>
+                <button onclick="deleteNotification(${i})" style="background:#FEE2E2; border:none; padding:6px 10px; border-radius:8px; font-size:11px; color:#DC2626; cursor:pointer;">×</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Section Événements -->
+        <div class="chart-container">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0;">🎉 Événements & Promos</h3>
+            <button onclick="openEventModal()" class="action-btn" style="background:#1a1a1a; color:white; padding:6px 14px; font-size:11px;">+ Ajouter</button>
+          </div>
+          ${events.length === 0 ? `
+            <p style="color:#9ca3af; font-size:13px; text-align:center; padding:20px 0;">Aucun événement actif</p>
+          ` : events.map((e, i) => `
+            <div class="event-item" style="display:flex; gap:12px; align-items:center;">
+              ${e.image ? `<img src="${e.image}" style="width:60px; height:60px; object-fit:cover; border-radius:10px;">` : `<div style="width:60px; height:60px; background:#f3f4f6; border-radius:10px; display:flex; align-items:center; justify-content:center;">🎉</div>`}
+              <div style="flex:1;">
+                <p style="font-size:13px; font-weight:600; color:#1a1a1a;">${e.title}</p>
+                <p style="font-size:11px; color:#9ca3af;">${e.description || ''}</p>
+                ${e.promoCode ? `<span style="display:inline-block; margin-top:4px; background:#DBEAFE; color:#1E40AF; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600;">Code: ${e.promoCode}</span>` : ''}
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <button onclick="editEvent(${i})" style="background:#f3f4f6; border:none; padding:6px 10px; border-radius:8px; font-size:11px; cursor:pointer;">Modifier</button>
+                <button onclick="deleteEvent(${i})" style="background:#FEE2E2; border:none; padding:6px 10px; border-radius:8px; font-size:11px; color:#DC2626; cursor:pointer;">×</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      // Render charts
+      setTimeout(() => {
+        renderDailyChart(stats.dailyData);
+        renderHourlyChart(stats.hourlyData);
+      }, 100);
+    }
+
+    function calculateStats() {
+      // Filtrer les commandes du mois sélectionné
+      const monthOrders = allOrdersHistory.filter(o => {
+        const d = new Date(o.created_at);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      });
+
+      // Chiffre d'affaires
+      const revenue = monthOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
+
+      // Commandes par jour
+      const dailyData = {};
+      const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+      for (let d = 1; d <= daysInMonth; d++) dailyData[d] = 0;
+      monthOrders.forEach(o => {
+        const day = new Date(o.created_at).getDate();
+        dailyData[day] = (dailyData[day] || 0) + 1;
+      });
+
+      // Commandes par heure
+      const hourlyData = {};
+      for (let h = 6; h <= 22; h++) hourlyData[h] = 0;
+      monthOrders.forEach(o => {
+        const hour = new Date(o.created_at).getHours();
+        if (hour >= 6 && hour <= 22) hourlyData[hour] = (hourlyData[hour] || 0) + 1;
+      });
+
+      // Top produits
+      const productCounts = {};
+      monthOrders.forEach(o => {
+        (o.items || []).forEach(item => {
+          const key = item.name;
+          productCounts[key] = (productCounts[key] || { name: item.name, count: 0, category: item.category || 'unknown' });
+          productCounts[key].count += item.quantity || 1;
+        });
+      });
+
+      const allProducts = Object.values(productCounts).sort((a, b) => b.count - a.count);
+      
+      // Catégoriser les produits (top 3 seulement)
+      const hotDrinks = allProducts.filter(p => {
+        const prod = products.find(pr => pr.name === p.name);
+        return prod && prod.category === 'hot';
+      }).slice(0, 3);
+
+      const coldDrinks = allProducts.filter(p => {
+        const prod = products.find(pr => pr.name === p.name);
+        return prod && prod.category === 'cold';
+      }).slice(0, 3);
+
+      const icedDrinks = allProducts.filter(p => {
+        const prod = products.find(pr => pr.name === p.name);
+        return prod && prod.category === 'iced';
+      }).slice(0, 3);
+
+      const food = allProducts.filter(p => {
+        const prod = products.find(pr => pr.name === p.name);
+        return prod && prod.category === 'food';
+      }).slice(0, 3);
+
+      return {
+        revenue,
+        totalOrders: monthOrders.length,
+        dailyData,
+        hourlyData,
+        topHotDrinks: hotDrinks,
+        topColdDrinks: coldDrinks,
+        topIcedDrinks: icedDrinks,
+        topFood: food
+      };
+    }
+
+    // State pour popup produit
+    function getProductFullName(name) {
+      const prod = products.find(p => p.name === name);
+      if (prod && prod.subcategory) {
+        return `${prod.subcategory} ${name}`;
+      }
+      return name;
+    }
+
+    function getProductCategory(productName) {
+      const prod = products.find(p => p.name === productName);
+      return prod ? prod.category : null;
+    }
+
+    function getProductDetailedStats(productName) {
+      const monthOrders = allOrdersHistory.filter(o => {
+        const d = new Date(o.created_at);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      });
+      
+      let monthCount = 0;
+      monthOrders.forEach(o => {
+        (o.items || []).forEach(item => {
+          if (item.name === productName) monthCount += item.quantity || 1;
+        });
+      });
+
+      const yearOrders = allOrdersHistory.filter(o => {
+        const d = new Date(o.created_at);
+        return d.getFullYear() === selectedYear;
+      });
+      
+      let yearCount = 0;
+      yearOrders.forEach(o => {
+        (o.items || []).forEach(item => {
+          if (item.name === productName) yearCount += item.quantity || 1;
+        });
+      });
+
+      // Rang dans le top du mois PAR CATÉGORIE
+      const productCategory = getProductCategory(productName);
+      const productCounts = {};
+      monthOrders.forEach(o => {
+        (o.items || []).forEach(item => {
+          // Ne compter que les produits de la même catégorie
+          if (getProductCategory(item.name) === productCategory) {
+            productCounts[item.name] = (productCounts[item.name] || 0) + (item.quantity || 1);
+          }
+        });
+      });
+      
+      const sortedProducts = Object.entries(productCounts).sort((a, b) => b[1] - a[1]);
+      const rankIndex = sortedProducts.findIndex(([name]) => name === productName);
+      const monthRank = rankIndex !== -1 ? rankIndex + 1 : null;
+
+      return { name: productName, fullName: getProductFullName(productName), monthCount, yearCount, monthRank };
+    }
+
+    function openProductStatsPopup(productName) {
+      selectedProductStats = getProductDetailedStats(productName);
+      showProductStatsPopup = true;
+      renderProductStatsPopup();
+    }
+
+    function closeProductStatsPopup() {
+      showProductStatsPopup = false;
+      selectedProductStats = null;
+      const popup = document.getElementById('productStatsPopup');
+      if (popup) popup.remove();
+    }
+
+    function renderProductStatsPopup() {
+      if (!showProductStatsPopup || !selectedProductStats) return;
+      
+      // Supprimer popup existante
+      const existing = document.getElementById('productStatsPopup');
+      if (existing) existing.remove();
+
+      const s = selectedProductStats;
+      const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+      
+      let rankText = '';
+      if (s.monthRank && s.monthRank <= 3) {
+        rankText = `
+          <div style="margin-top:16px; padding:14px; background:#f3f4f6; border-radius:10px; text-align:center;">
+            <p style="font-size:14px; font-weight:700; color:#1a1a1a; margin:0;">TOP ${s.monthRank} de sa catégorie</p>
+          </div>
+        `;
+      }
+
+      const popupHTML = `
+        <div id="productStatsPopup" class="modal-overlay" onclick="closeProductStatsPopup()">
+          <div onclick="event.stopPropagation()" style="background:white; border-radius:16px; padding:20px; max-width:320px; width:100%;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+              <h2 style="font-size:14px; font-weight:600; color:#1a1a1a; margin:0;">Statistiques</h2>
+              <button onclick="closeProductStatsPopup()" style="background:none; border:none; font-size:18px; color:#9ca3af; cursor:pointer;">✕</button>
+            </div>
+            
+            <p style="font-size:13px; font-weight:600; color:#1a1a1a; text-align:center; margin:0;">${s.fullName}</p>
+            <p style="font-size:10px; color:#6b7280; text-align:center; margin:4px 0 14px 0; text-transform:uppercase; letter-spacing:0.5px;">Total des ventes</p>
+            
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+              <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
+                <p style="font-size:10px; color:#6b7280; margin:0 0 4px 0;">${monthNames[selectedMonth]}</p>
+                <p style="font-size:20px; font-weight:700; color:#1a1a1a; margin:0;">${s.monthCount}</p>
+              </div>
+              <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:12px; text-align:center;">
+                <p style="font-size:10px; color:#6b7280; margin:0 0 4px 0;">Année ${selectedYear}</p>
+                <p style="font-size:20px; font-weight:700; color:#1a1a1a; margin:0;">${s.yearCount}</p>
+              </div>
+            </div>
+            
+            ${rankText}
+          </div>
+        </div>
+      `;
+      
+      document.body.insertAdjacentHTML('beforeend', popupHTML);
+    }
+
+    function renderRanking(items) {
+      if (items.length === 0) {
+        return `<p style="color:#9ca3af; font-size:12px; text-align:center; padding:12px;">Aucune donnée</p>`;
+      }
+      return items.map((item, i) => {
+        const fullName = getProductFullName(item.name);
+        const escapedName = item.name.replace(/'/g, "\\'");
+        return `
+          <div class="ranking-item">
+            <div class="ranking-position">${i + 1}</div>
+            <div style="flex:1;">
+              <p style="font-size:13px; font-weight:600; color:#1a1a1a;">${fullName}</p>
+            </div>
+            <button onclick="openProductStatsPopup('${escapedName}')" style="background:#f3f4f6; border:1px solid #e5e7eb; padding:4px 8px; border-radius:6px; font-size:10px; font-weight:500; color:#6b7280; cursor:pointer; margin-right:10px;">Voir +</button>
+            <p style="font-size:13px; font-weight:700; color:#1a1a1a; min-width:24px; text-align:right;">${item.count}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDailyChart(dailyData) {
+      const ctx = document.getElementById('dailyChart');
+      if (!ctx) return;
+      
+      new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(dailyData),
+          datasets: [{
+            label: 'Commandes',
+            data: Object.values(dailyData),
+            backgroundColor: '#1a1a1a',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function renderHourlyChart(hourlyData) {
+      const ctx = document.getElementById('hourlyChart');
+      if (!ctx) return;
+      
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Object.keys(hourlyData).map(h => h + 'h'),
+          datasets: [{
+            label: 'Commandes',
+            data: Object.values(hourlyData),
+            borderColor: '#1a1a1a',
+            backgroundColor: 'rgba(26,26,26,0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function updateDashboardPeriod() {
+      selectedMonth = parseInt(document.getElementById('monthSelect').value);
+      selectedYear = parseInt(document.getElementById('yearSelect').value);
+      renderDashboardTab();
+    }
+
+    // ===== NOTIFICATIONS =====
+    function openNotificationModal(index = null) {
+      editingNotification = index;
+      const notif = index !== null ? notifications[index] : { title: '', message: '', type: 'info' };
+      
+      document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal-overlay" id="notifModal" onclick="if(event.target.id==='notifModal')closeNotificationModal()">
+          <div class="modal-content" onclick="event.stopPropagation()">
+            <div style="padding:20px; border-bottom:1px solid #e5e7eb;">
+              <h2 style="font-size:18px; font-weight:700; color:#1a1a1a;">${index !== null ? 'Modifier' : 'Nouvelle'} Notification</h2>
+            </div>
+            <div style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+              <div>
+                <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">Titre</label>
+                <input type="text" id="notifTitle" value="${notif.title}" class="form-input" placeholder="Ex: Nouvelle boisson disponible !">
+              </div>
+              <div>
+                <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">Message</label>
+                <textarea id="notifMessage" class="form-input" rows="3" placeholder="Ex: Découvrez notre nouveau frappé...">${notif.message}</textarea>
+              </div>
+              <div>
+                <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">Type</label>
+                <select id="notifType" class="form-input">
+                  <option value="info" ${notif.type === 'info' ? 'selected' : ''}>ℹ️ Information</option>
+                  <option value="promo" ${notif.type === 'promo' ? 'selected' : ''}>🎁 Promotion</option>
+                  <option value="alert" ${notif.type === 'alert' ? 'selected' : ''}>⚠️ Alerte</option>
+                </select>
+              </div>
+            </div>
+            <div style="padding:20px; border-top:1px solid #e5e7eb; display:flex; gap:10px;">
+              <button onclick="closeNotificationModal()" style="flex:1; padding:12px; border-radius:50px; border:1.5px solid #e5e7eb; background:white; font-weight:600; cursor:pointer;">Annuler</button>
+              <button onclick="saveNotification()" class="action-btn" style="flex:1; background:#1a1a1a; color:white; padding:12px;">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    function closeNotificationModal() {
+      document.getElementById('notifModal')?.remove();
+      editingNotification = null;
+    }
+
+    function saveNotification() {
+      const title = document.getElementById('notifTitle').value.trim();
+      const message = document.getElementById('notifMessage').value.trim();
+      const type = document.getElementById('notifType').value;
+
+      if (!title) { alert('Veuillez entrer un titre'); return; }
+
+      const notif = { title, message, type, createdAt: new Date().toISOString() };
+
+      if (editingNotification !== null) {
+        notifications[editingNotification] = notif;
+      } else {
+        notifications.push(notif);
+      }
+
+      localStorage.setItem('beanz_notifications', JSON.stringify(notifications));
+      closeNotificationModal();
+      renderDashboardTab();
+    }
+
+    function editNotification(index) {
+      openNotificationModal(index);
+    }
+
+    function deleteNotification(index) {
+      if (!confirm('Supprimer cette notification ?')) return;
+      notifications.splice(index, 1);
+      localStorage.setItem('beanz_notifications', JSON.stringify(notifications));
+      renderDashboardTab();
+    }
+
+    // ===== ÉVÉNEMENTS =====
+    function openEventModal(index = null) {
+      editingEvent = index;
+      const evt = index !== null ? events[index] : { title: '', description: '', promoCode: '', image: '', startDate: '', endDate: '' };
+      
+      document.body.insertAdjacentHTML('beforeend', `
+        <div class="modal-overlay" id="eventModal" onclick="if(event.target.id==='eventModal')closeEventModal()">
+          <div class="modal-content" onclick="event.stopPropagation()">
+            <div style="padding:20px; border-bottom:1px solid #e5e7eb;">
+              <h2 style="font-size:18px; font-weight:700; color:#1a1a1a;">${index !== null ? 'Modifier' : 'Nouvel'} Événement</h2>
+            </div>
+            <div style="padding:20px; display:flex; flex-direction:column; gap:14px;">
+              <div>
+                <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">Titre</label>
+                <input type="text" id="eventTitle" value="${evt.title}" class="form-input" placeholder="Ex: Happy Hour !">
+              </div>
+              <div>
+                <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">Description</label>
+                <textarea id="eventDesc" class="form-input" rows="2" placeholder="Ex: -20% sur tous les cafés...">${evt.description}</textarea>
+              </div>
+              <div>
+                <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">Code Promo (optionnel)</label>
+                <input type="text" id="eventPromo" value="${evt.promoCode}" class="form-input" placeholder="Ex: HAPPY20">
+              </div>
+              <div>
+                <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">URL Image (optionnel)</label>
+                <input type="text" id="eventImage" value="${evt.image}" class="form-input" placeholder="https://...">
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                  <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">Date début</label>
+                  <input type="date" id="eventStart" value="${evt.startDate}" class="form-input">
+                </div>
+                <div>
+                  <label style="font-size:12px; font-weight:600; color:#6b7280; display:block; margin-bottom:6px;">Date fin</label>
+                  <input type="date" id="eventEnd" value="${evt.endDate}" class="form-input">
+                </div>
+              </div>
+            </div>
+            <div style="padding:20px; border-top:1px solid #e5e7eb; display:flex; gap:10px;">
+              <button onclick="closeEventModal()" style="flex:1; padding:12px; border-radius:50px; border:1.5px solid #e5e7eb; background:white; font-weight:600; cursor:pointer;">Annuler</button>
+              <button onclick="saveEvent()" class="action-btn" style="flex:1; background:#1a1a1a; color:white; padding:12px;">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      `);
+    }
+
+    function closeEventModal() {
+      document.getElementById('eventModal')?.remove();
+      editingEvent = null;
+    }
+
+    function saveEvent() {
+      const title = document.getElementById('eventTitle').value.trim();
+      const description = document.getElementById('eventDesc').value.trim();
+      const promoCode = document.getElementById('eventPromo').value.trim();
+      const image = document.getElementById('eventImage').value.trim();
+      const startDate = document.getElementById('eventStart').value;
+      const endDate = document.getElementById('eventEnd').value;
+
+      if (!title) { alert('Veuillez entrer un titre'); return; }
+
+      const evt = { title, description, promoCode, image, startDate, endDate, createdAt: new Date().toISOString() };
+
+      if (editingEvent !== null) {
+        events[editingEvent] = evt;
+      } else {
+        events.push(evt);
+      }
+
+      localStorage.setItem('beanz_events', JSON.stringify(events));
+      closeEventModal();
+      renderDashboardTab();
+    }
+
+    function editEvent(index) {
+      openEventModal(index);
+    }
+
+    function deleteEvent(index) {
+      if (!confirm('Supprimer cet événement ?')) return;
+      events.splice(index, 1);
+      localStorage.setItem('beanz_events', JSON.stringify(events));
+      renderDashboardTab();
+    }
+
+    // ===== ONGLET COMMANDES =====
+    function renderOrdersTab() {
+      const filters = [
+        { status: '', label: 'Toutes', count: orders.length },
+        { status: 'pending', label: 'En attente', count: orders.filter(o => o.status === 'pending').length },
+        { status: 'confirmed', label: 'Confirmées', count: orders.filter(o => o.status === 'confirmed').length },
+        { status: 'preparing', label: 'En prépa', count: orders.filter(o => o.status === 'preparing').length },
+        { status: 'ready', label: 'Prêtes', count: orders.filter(o => o.status === 'ready').length },
+        { status: 'collected', label: 'Récupérées', count: orders.filter(o => o.status === 'collected').length }
+      ];
+
+      const filtersHtml = filters.map(f => `
+        <button onclick="setFilter('${f.status}')" class="tab-btn ${filterStatus === f.status ? 'tab-active' : 'tab-inactive'}" style="white-space:nowrap;">
+          ${f.label} (${f.count})
+        </button>
+      `).join('');
+
+      const filtered = filterStatus ? orders.filter(o => o.status === filterStatus) : orders;
+
+      const ordersHtml = filtered.length === 0 
+        ? `<p style="text-align:center; color:#9ca3af; padding:40px 0;">Aucune commande</p>`
+        : filtered.map(order => {
+            const user = order.users || {};
+            const action = getNextAction(order.status);
+            const itemsList = (order.items || []).map(i => `${i.quantity}x ${i.name}`).join(', ');
+            const time = new Date(order.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+            const isReward = order.payment_method === 'points' || order.points_spent > 0;
+
+            return `
+              <div class="order-card" style="${isReward ? 'background: #374151; border: 1px solid #4b5563;' : ''}">
+                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+                  <div>
+                    <p style="font-size:14px; font-weight:700; color:${isReward ? '#f9fafb' : '#1a1a1a'};">${user.prenom || '?'} @${user.pseudo || '?'}</p>
+                    <p style="font-size:11px; color:${isReward ? '#9ca3af' : '#9ca3af'};">${time} · ${user.card_number || ''}</p>
+                  </div>
+                  <span class="status-badge status-${order.status}">${statusLabels[order.status]}</span>
+                </div>
+                <p style="font-size:12px; color:${isReward ? '#d1d5db' : '#4b5563'}; margin-bottom:8px;">${itemsList}</p>
+                ${order.note ? `<p style="font-size:11px; color:${isReward ? '#9ca3af' : '#9ca3af'}; font-style:italic; margin-bottom:8px;">📝 ${order.note}</p>` : ''}
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  ${isReward ? `
+                    <p style="font-size:14px; font-weight:700; color:#ffffff;">Récompense</p>
+                  ` : `
+                    <p style="font-size:16px; font-weight:700; color:#1a1a1a;">${Number(order.total).toFixed(2)}€</p>
+                  `}
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    ${isReward ? `
+                      <span style="font-size:11px; color:#ffffff; font-weight:600;">Échangé avec points</span>
+                    ` : `
+                      <span style="font-size:11px; color:#22c55e; font-weight:600;">+${order.points_earned} pts</span>
+                    `}
+                    ${action ? `<button class="action-btn" onclick="updateOrderStatus('${order.id}', '${action.next}')" style="background:${action.color}; color:white;">${action.label}</button>` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      document.getElementById('tabContent').innerHTML = `
+        <div style="display:flex; gap:6px; overflow-x:auto; margin-bottom:14px; padding-bottom:4px;">
+          ${filtersHtml}
+        </div>
+        <button onclick="loadOrders().then(renderApp)" style="width:100%; padding:10px; border-radius:10px; background:white; border:1.5px solid #e5e7eb; font-size:12px; font-weight:600; color:#1a1a1a; cursor:pointer; margin-bottom:14px;">↻ Rafraîchir</button>
+        ${ordersHtml}
+      `;
+    }
+
+    async function setFilter(status) {
+      filterStatus = status;
+      await loadOrders();
+      renderApp();
+    }
+
+    async function updateOrderStatus(orderId, newStatus) {
+      try {
+        const res = await fetch(API_URL + '/admin/orders/' + orderId + '/status', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify({ status: newStatus })
+        });
+
+        if (res.ok) {
+          await loadOrders();
+          renderApp();
+        } else {
+          alert('Erreur lors de la mise à jour');
+        }
+      } catch (err) {
+        console.error('Erreur update status:', err);
+        alert('Erreur réseau');
+      }
+    }
+
+    function getNextAction(status) {
+      const actions = {
+        pending: { next: 'confirmed', label: 'Confirmer', color: '#3B82F6' },
+        confirmed: { next: 'preparing', label: 'Préparer', color: '#8B5CF6' },
+        preparing: { next: 'ready', label: 'Prête', color: '#22C55E' },
+        ready: { next: 'collected', label: 'Récupérée', color: '#6B7280' }
+      };
+      return actions[status] || null;
+    }
+
+    // ===== ONGLET SCANNER =====
+    function renderScannerTab() {
+      document.getElementById('tabContent').innerHTML = `
+        <div class="chart-container" style="text-align:center;">
+          <h3>Scanner le QR Code client</h3>
+          <p style="font-size:12px; color:#9ca3af; margin-bottom:16px;">Scannez le QR code affiché sur la carte du client</p>
+          <div id="reader"></div>
+          <button onclick="startScanner()" id="startScanBtn" class="action-btn" style="margin-top:16px; background:#1a1a1a; color:white;">Démarrer le scanner</button>
+          <div id="scanResult"></div>
+        </div>
+
+        ${scannedClient ? `
+          <div class="client-card">
+            <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:16px;">
+              <div>
+                <h3 style="font-size:18px; font-weight:700; color:#1a1a1a;">${scannedClient.client.prenom} @${scannedClient.client.pseudo}</h3>
+                <p style="font-size:12px; color:#9ca3af;">Carte: ${scannedClient.client.card_number}</p>
+              </div>
+              <div style="text-align:right;">
+                <p style="font-size:24px; font-weight:700; color:#1a1a1a;">${scannedClient.client.points}</p>
+                <p style="font-size:11px; color:#9ca3af;">Beanz Points</p>
+              </div>
+            </div>
+            <button onclick="openInstoreModal()" class="action-btn" style="width:100%; background:#22C55E; color:white; padding:14px;">+ Nouvelle commande sur place</button>
+          </div>
+        ` : ''}
+
+        ${showInstoreModal ? renderInstoreModal() : ''}
+      `;
+    }
+
+    function startScanner() {
+      const btn = document.getElementById('startScanBtn');
+      btn.textContent = 'Chargement...';
+      btn.disabled = true;
+
+      scannerInstance = new Html5Qrcode("reader");
+      scannerInstance.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScanSuccess,
+        () => {}
+      ).catch(err => {
+        console.error('Erreur scanner:', err);
+        btn.textContent = 'Réessayer';
+        btn.disabled = false;
+      });
+    }
+
+    async function onScanSuccess(decodedText) {
+      if (scannerInstance) {
+        scannerInstance.stop().catch(() => {});
+        scannerInstance = null;
+      }
+
+      try {
+        const qrData = JSON.parse(decodedText);
+
+        const res = await fetch(API_URL + '/admin/scan', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify({ userId: qrData.userId, pseudo: qrData.pseudo })
+        });
+
+        if (!res.ok) {
+          document.getElementById('scanResult').innerHTML = `
+            <div style="text-align:center; padding:20px; color:#991B1B; background:#FEE2E2; border-radius:12px; margin-top:16px;">
+              Client non trouvé
+            </div>
+          `;
+          return;
+        }
+
+        const data = await res.json();
+        scannedClient = data;
+        renderScannerTab();
+
+      } catch (err) {
+        document.getElementById('scanResult').innerHTML = `
+          <div style="text-align:center; padding:20px; color:#991B1B; background:#FEE2E2; border-radius:12px; margin-top:16px;">
+            QR code invalide
+          </div>
+        `;
+      }
+    }
+
+    // ===== COMMANDE SUR PLACE =====
+    function renderInstoreModal() {
+      const categories = [
+        { id: 'hot', label: 'Boissons chaudes' },
+        { id: 'cold', label: 'Boissons froides' },
+        { id: 'iced', label: 'Café glacé' },
+        { id: 'food', label: 'Food' }
+      ];
+
+      const filteredProducts = products.filter(p => p.category === instoreCategory);
+      const total = instoreCart.reduce((sum, item) => sum + item.price, 0);
+      
+      // Grouper par sous-catégorie
+      const subcategories = [...new Set(filteredProducts.map(p => p.subcategory))];
+
+      return `
+        <div class="modal-overlay" id="instoreModal">
+          <div class="modal-content">
+            <div style="padding:16px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center;">
+              <h2 style="font-size:16px; font-weight:700;">Commande pour ${scannedClient.client.prenom}</h2>
+              <button onclick="closeInstoreModal()" style="background:none; border:none; font-size:20px; cursor:pointer;">×</button>
+            </div>
+
+            <div style="padding:12px; border-bottom:1px solid #e5e7eb; display:flex; gap:6px; flex-wrap:wrap;">
+              ${categories.map(c => `
+                <button onclick="setInstoreCategory('${c.id}')" class="tab-btn ${instoreCategory === c.id ? 'tab-active' : 'tab-inactive'}" style="font-size:11px; padding:6px 12px;">${c.label}</button>
+              `).join('')}
+            </div>
+
+            <div style="padding:0; max-height:280px; overflow-y:auto;">
+              ${subcategories.map(sub => `
+                <div style="background:#f3f4f6; padding:8px 12px; font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">
+                  ${sub}
+                </div>
+                ${filteredProducts.filter(p => p.subcategory === sub).map(p => `
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid #f3f4f6;">
+                    <div>
+                      <p style="font-size:13px; font-weight:600; color:#1a1a1a;">${p.name}</p>
+                      <p style="font-size:11px; color:#9ca3af;">${p.prices.medium.toFixed(2)}€</p>
+                    </div>
+                    <button onclick="addToInstoreCart(${p.id})" style="background:#1a1a1a; color:white; border:none; width:28px; height:28px; border-radius:50%; font-size:16px; cursor:pointer;">+</button>
+                  </div>
+                `).join('')}
+              `).join('')}
+            </div>
+
+            ${instoreCart.length > 0 ? `
+              <div style="padding:12px; border-top:1px solid #e5e7eb; max-height:150px; overflow-y:auto;">
+                <p style="font-size:12px; font-weight:700; color:#1a1a1a; margin-bottom:8px;">Panier</p>
+                ${instoreCart.map((item, i) => `
+                  <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
+                    <span style="font-size:12px; color:#4b5563;">${item.name} (M)</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <span style="font-size:12px; font-weight:600;">${item.price.toFixed(2)}€</span>
+                      <button onclick="removeFromInstoreCart(${i})" style="background:#FEE2E2; color:#DC2626; border:none; width:22px; height:22px; border-radius:50%; font-size:12px; cursor:pointer;">×</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+
+            <div style="padding:16px; border-top:1px solid #e5e7eb;">
+              <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <span style="font-size:14px; font-weight:700;">Total</span>
+                <span style="font-size:18px; font-weight:700;">${total.toFixed(2)}€</span>
+              </div>
+              <button onclick="submitInstoreOrder()" id="submitInstoreBtn" class="action-btn" style="width:100%; background:#22C55E; color:white; padding:14px;" ${instoreCart.length === 0 ? 'disabled' : ''}>
+                Valider la commande
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function openInstoreModal() {
+      showInstoreModal = true;
+      instoreCart = [];
+      instoreCategory = 'hot';
+      renderScannerTab();
+    }
+
+    function closeInstoreModal() {
+      showInstoreModal = false;
+      instoreCart = [];
+      renderScannerTab();
+    }
+
+    function setInstoreCategory(cat) {
+      instoreCategory = cat;
+      renderScannerTab();
+    }
+
+    function addToInstoreCart(productId) {
+      const product = products.find(p => p.id === productId);
+      if (!product) return;
+
+      instoreCart.push({
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        subcategory: product.subcategory,
+        size: 'medium',
+        price: product.prices.medium,
+        quantity: 1
+      });
+
+      renderScannerTab();
+    }
+
+    function removeFromInstoreCart(index) {
+      instoreCart.splice(index, 1);
+      renderScannerTab();
+    }
+
+    function renderScannedClient() {
+      renderScannerTab();
+    }
+
+    async function submitInstoreOrder() {
+      if (instoreCart.length === 0) return;
+
+      const btn = document.getElementById('submitInstoreBtn');
+      btn.textContent = 'Envoi...';
+      btn.disabled = true;
+
+      const total = instoreCart.reduce((sum, item) => sum + item.price, 0);
+
+      try {
+        const res = await fetch(API_URL + '/admin/orders/instore', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authToken
+          },
+          body: JSON.stringify({
+            userId: scannedClient.client.id,
+            items: instoreCart,
+            total: total
+          })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert('Erreur: ' + (data.error || 'Impossible de créer la commande'));
+          btn.textContent = 'Valider la commande';
+          btn.disabled = false;
+          return;
+        }
+
+        scannedClient.client.points = data.newBalance;
+        closeInstoreModal();
+
+        document.body.insertAdjacentHTML('beforeend', `
+          <div id="instoreSuccess" style="position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:9999; background:#22c55e; color:white; padding:14px 24px; border-radius:12px; font-size:14px; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
+            ✓ Commande créée · +${data.pointsEarned} Beanz ajoutés
+          </div>
+        `);
+        setTimeout(() => document.getElementById('instoreSuccess')?.remove(), 3000);
+
+        renderScannedClient();
+
+      } catch (err) {
+        console.error('Erreur commande instore:', err);
+        alert('Erreur réseau');
+        btn.textContent = 'Valider la commande';
+        btn.disabled = false;
+      }
+    }
+
+    // ===== INIT =====
+    async function init() {
+      if (!authToken) {
+        renderLogin();
+        return;
+      }
+      try {
+        const payload = JSON.parse(atob(authToken.split('.')[1]));
+        if (payload.role !== 'admin') { adminLogout(); return; }
+        renderDashboard();
+      } catch (err) {
+        adminLogout();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
